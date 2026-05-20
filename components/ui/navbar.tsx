@@ -4,13 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Search, Bell, Bookmark, MessageSquare, ChevronDown, Plus, LayoutGrid, Package, User } from "lucide-react";
+import { Search, Bell, Bookmark, MessageSquare, ChevronDown, Plus, LayoutGrid, Package, User, X } from "lucide-react";
 import { LOC_CACHE_KEY, LOC_CACHE_TTL, type CachedLocation } from "@/lib/hooks/use-location";
+import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
 
 const TABS = [
   { id: "browse",   label: "Browse",   href: "/catalog"  },
   { id: "sell",     label: "Sell",     href: "/sell"     },
   { id: "messages", label: "Messages", href: "/messages" },
+  { id: "swaps",    label: "Swaps",    href: "/swaps"    },
   { id: "orders",   label: "Orders",   href: "/orders"   },
   { id: "profile",  label: "Profile",  href: "/profile"  },
 ];
@@ -19,6 +21,7 @@ function getActiveTab(path: string) {
   if (path.startsWith("/catalog") || path.startsWith("/product")) return "browse";
   if (path.startsWith("/sell"))      return "sell";
   if (path.startsWith("/messages"))  return "messages";
+  if (path.startsWith("/swaps"))     return "swaps";
   if (path.startsWith("/orders"))    return "orders";
   if (path.startsWith("/profile") || path.startsWith("/kyc") || path.startsWith("/listings")) return "profile";
   return null;
@@ -69,7 +72,19 @@ export function Navbar() {
   const [university,    setUniversity]    = useState("Your Campus");
   const [location,      setLocation]      = useState<CachedLocation | null>(null);
   const [unreadCount,   setUnreadCount]   = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [pendingSwaps,  setPendingSwaps]  = useState(0);
+  const [campusOpen,    setCampusOpen]    = useState(false);
+  const [campusSearch,  setCampusSearch]  = useState("");
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const campusRef = useRef<HTMLDivElement>(null);
+
+  // ── Load preferred campus from localStorage (guests) ──
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("preferred_campus");
+      if (saved) setUniversity(saved);
+    } catch {}
+  }, []);
 
   // ── Auth + profile ───────────────────────────────
   useEffect(() => {
@@ -101,6 +116,14 @@ export function Navbar() {
           .eq("read", false);
         if (count) setUnreadCount(count);
       }
+
+      // Pending swap offers received
+      const { count: swapCount } = await supabase
+        .from("swap_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("seller_id", uid)
+        .eq("status", "pending");
+      if (swapCount) setPendingSwaps(swapCount);
     });
   }, []);
 
@@ -119,6 +142,26 @@ export function Navbar() {
       { timeout: 8000, maximumAge: 300_000 }
     );
   }, []);
+
+  // ── Campus dropdown: close on outside click ──────
+  useEffect(() => {
+    if (!campusOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (campusRef.current && !campusRef.current.contains(e.target as Node)) {
+        setCampusOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [campusOpen]);
+
+  function selectCampus(name: string) {
+    setUniversity(name);
+    setCampusOpen(false);
+    setCampusSearch("");
+    try { localStorage.setItem("preferred_campus", name); } catch {}
+    router.push(`/catalog?university=${encodeURIComponent(name)}`);
+  }
 
   // ── ⌘K shortcut ─────────────────────────────────
   useEffect(() => {
@@ -188,21 +231,78 @@ export function Navbar() {
 
       {activeTab && (
         <div className="ut-subnav">
-          <span className="ut-campus-pill">
-            <span className="ut-pin">U</span>
-            <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {university}
-            </span>
-            {location?.label && (
-              <>
-                <span style={{ opacity: 0.4, fontWeight: 400 }}>·</span>
-                <span style={{ opacity: 0.75, fontWeight: 400, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {location.label}
-                </span>
-              </>
+          <div ref={campusRef} style={{ position: "relative" }}>
+            <button
+              className="ut-campus-pill"
+              onClick={() => { setCampusOpen(o => !o); setCampusSearch(""); }}
+              style={{ background: undefined, border: undefined, cursor: "pointer", font: "inherit" }}
+            >
+              <span className="ut-pin">U</span>
+              <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {university}
+              </span>
+              {location?.label && (
+                <>
+                  <span style={{ opacity: 0.4, fontWeight: 400 }}>·</span>
+                  <span style={{ opacity: 0.75, fontWeight: 400, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {location.label}
+                  </span>
+                </>
+              )}
+              <ChevronDown size={13} style={{ transition: "transform 0.2s", transform: campusOpen ? "rotate(180deg)" : "none", flexShrink: 0 }} />
+            </button>
+
+            {campusOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 300,
+                background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
+                borderRadius: 12, width: 300, boxShadow: "0 8px 28px rgba(0,0,0,0.13)",
+                overflow: "hidden",
+              }}>
+                <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--ut-line)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Search size={13} style={{ color: "var(--ut-ink-mute)", flexShrink: 0 }} />
+                  <input
+                    autoFocus
+                    placeholder="Search universities…"
+                    value={campusSearch}
+                    onChange={e => setCampusSearch(e.target.value)}
+                    style={{ flex: 1, border: "none", background: "transparent", outline: "none", fontSize: 13, color: "var(--ut-ink)" }}
+                  />
+                  {campusSearch && (
+                    <button onClick={() => setCampusSearch("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--ut-ink-mute)", display: "grid", placeItems: "center" }}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                <div style={{ maxHeight: 268, overflowY: "auto" }}>
+                  {(() => {
+                    const filtered = NIGERIAN_UNIVERSITIES.filter(u =>
+                      u.toLowerCase().includes(campusSearch.toLowerCase())
+                    );
+                    if (filtered.length === 0) return (
+                      <p style={{ padding: "14px 16px", fontSize: 13, color: "var(--ut-ink-mute)", margin: 0 }}>No universities found</p>
+                    );
+                    return filtered.map(name => (
+                      <button
+                        key={name}
+                        onClick={() => selectCampus(name)}
+                        style={{
+                          display: "block", width: "100%", textAlign: "left",
+                          padding: "9px 16px", fontSize: 13, lineHeight: 1.4,
+                          background: university === name ? "var(--ut-primary-tint)" : "transparent",
+                          color: university === name ? "var(--ut-primary-ink)" : "var(--ut-ink)",
+                          border: "none", cursor: "pointer",
+                          fontWeight: university === name ? 600 : 400,
+                        }}
+                      >
+                        {name}
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
             )}
-            <ChevronDown size={13} />
-          </span>
+          </div>
 
           <nav className="ut-tabs">
             {TABS.map((tab) => (
@@ -217,6 +317,16 @@ export function Navbar() {
                     fontFamily: "var(--ut-font-mono)",
                   }}>
                     {unreadCount}
+                  </span>
+                )}
+                {tab.id === "swaps" && pendingSwaps > 0 && (
+                  <span style={{
+                    background: "var(--ut-accent)", color: "white",
+                    borderRadius: 999, fontSize: 10, fontWeight: 700,
+                    padding: "1px 6px", minWidth: 18, textAlign: "center",
+                    fontFamily: "var(--ut-font-mono)",
+                  }}>
+                    {pendingSwaps}
                   </span>
                 )}
               </Link>

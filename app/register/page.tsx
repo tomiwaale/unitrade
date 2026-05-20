@@ -9,6 +9,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useTransition } from "react";
 import { ArrowRight, User, Mail, Lock, Building, CreditCard, Landmark, ShieldCheck } from "lucide-react";
+import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
 
 const SUPPORTED_BANKS = [
   { name: "Access Bank", code: "044" },
@@ -101,7 +102,19 @@ export default function RegisterPage() {
                   <label className="ut-field-label">University</label>
                   <div style={{ position: "relative" }}>
                     <Building size={14} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--ut-ink-mute)", pointerEvents: "none" }} />
-                    <input autoComplete="organization" placeholder="University of Lagos" {...form.register("university")} className="ut-input" style={{ paddingLeft: 38 }} />
+                    <input
+                      list="ng-universities"
+                      autoComplete="off"
+                      placeholder="Search your university…"
+                      {...form.register("university")}
+                      className="ut-input"
+                      style={{ paddingLeft: 38 }}
+                    />
+                    <datalist id="ng-universities">
+                      {NIGERIAN_UNIVERSITIES.map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
                   </div>
                   <FieldError message={form.formState.errors.university?.message} />
                 </div>
@@ -205,7 +218,14 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <p style={{ marginTop: 20, textAlign: "center", fontSize: 13.5, color: "var(--ut-ink-mute)" }}>
+            <p style={{ marginTop: 16, textAlign: "center", fontSize: 12.5, color: "var(--ut-ink-mute)", lineHeight: 1.6 }}>
+              By joining, you agree to our{" "}
+              <Link href="/terms" style={{ color: "var(--ut-primary)", textDecoration: "none" }}>Terms of Use</Link>
+              {" "}and{" "}
+              <Link href="/privacy" style={{ color: "var(--ut-primary)", textDecoration: "none" }}>Privacy Policy</Link>.
+            </p>
+
+            <p style={{ marginTop: 12, textAlign: "center", fontSize: 13.5, color: "var(--ut-ink-mute)" }}>
               Already have an account?{" "}
               <Link href="/login" style={{ color: "var(--ut-primary)", fontWeight: 500, textDecoration: "none" }}>
                 Sign in

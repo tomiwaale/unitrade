@@ -3,19 +3,30 @@
 import { useState, useTransition } from "react";
 import { Heart } from "lucide-react";
 import { toggleWishlist } from "@/app/actions/wishlist";
+import { useRouter, usePathname } from "next/navigation";
 
 interface Props {
   productId: string;
   initialLiked: boolean;
+  isLoggedIn: boolean;
+  size?: number;
 }
 
-export default function WishlistBtn({ productId, initialLiked }: Props) {
-  const [liked, setLiked] = useState(initialLiked);
+export default function WishlistBtn({ productId, initialLiked, isLoggedIn, size = 13 }: Props) {
+  const [liked, setLiked]            = useState(initialLiked);
   const [isPending, startTransition] = useTransition();
+  const router   = useRouter();
+  const pathname = usePathname();
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!isLoggedIn) {
+      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
     startTransition(async () => {
       const result = await toggleWishlist(productId);
       if (!result.error) setLiked(result.liked ?? !liked);
@@ -35,7 +46,7 @@ export default function WishlistBtn({ productId, initialLiked }: Props) {
       aria-label={liked ? "Remove from wishlist" : "Save to wishlist"}
     >
       <Heart
-        size={13}
+        size={size}
         fill={liked ? "#FF5A1F" : "none"}
         style={{ color: liked ? "#FF5A1F" : "var(--ut-ink-soft)", transition: "color 0.15s, fill 0.15s" }}
       />

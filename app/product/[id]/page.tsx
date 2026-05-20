@@ -1,12 +1,14 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  MapPin, ChevronLeft, Shield, Lock, ArrowLeftRight, Star, Heart,
+  MapPin, ChevronLeft, Shield, Lock, ArrowLeftRight, Star,
 } from "lucide-react";
 import BuyButton from "./buy-button";
 import MessageSellerBtn from "./message-seller-btn";
 import ProposeSwapBtn from "./propose-swap-btn";
+import WishlistBtn from "@/app/catalog/wishlist-btn";
 import { Navbar } from "@/components/ui/navbar";
 
 const CAT_LABELS: Record<string, string> = {
@@ -43,6 +45,47 @@ function abbreviateName(name: string) {
   return `${parts[0]} ${parts[1][0]}.`;
 }
 
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: product } = await supabase
+    .from("products")
+    .select("title, description, price, images, category, profiles(university)")
+    .eq("id", id)
+    .single();
+
+  if (!product) return { title: "Listing not found · CampSwap" };
+
+  const title       = `${product.title} — ₦${Number(product.price).toLocaleString()} · CampSwap`;
+  const description = `${product.description?.slice(0, 140) ?? ""}${product.description?.length > 140 ? "…" : ""}`;
+  const image       = product.images?.[0];
+  const appUrl =
+    process.env.APP_URL?.startsWith("http")
+      ? process.env.APP_URL
+      : "https://campswap.app";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${appUrl}/product/${id}`,
+      siteName: "CampSwap",
+      ...(image ? { images: [{ url: image, width: 1200, height: 630, alt: product.title }] } : {}),
+      type: "website",
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -73,21 +116,32 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     dealCount = count ?? 0;
   }
 
-  // Unread messages in existing conversation for this product
+  // Unread messages + wishlist state — only needed when logged in
   let unreadCount = 0;
+  let isWishlisted = false;
   if (user) {
-    const { data: conv } = await supabase
-      .from("conversations")
-      .select("id")
-      .eq("product_id", product.id)
-      .eq("buyer_id", user.id)
-      .maybeSingle();
+    const [convRes, wishRes] = await Promise.all([
+      supabase
+        .from("conversations")
+        .select("id")
+        .eq("product_id", product.id)
+        .eq("buyer_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("wishlists")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("product_id", product.id)
+        .maybeSingle(),
+    ]);
 
-    if (conv) {
+    isWishlisted = !!wishRes.data;
+
+    if (convRes.data) {
       const { count } = await supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
-        .eq("conversation_id", conv.id)
+        .eq("conversation_id", convRes.data.id)
         .neq("sender_id", user.id)
         .eq("read", false);
       unreadCount = count ?? 0;
@@ -117,7 +171,42 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     ...Array(Math.max(0, 4 - (product.images?.length ?? 0))).fill(null),
   ];
 
+  const appUrl =
+    process.env.APP_URL?.startsWith("http")
+      ? process.env.APP_URL
+      : "https://campswap.app";
+  const sellerNameRaw = product.profiles?.full_name ?? "CampSwap Seller";
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description: product.description,
+    image: product.images ?? [],
+    url: `${appUrl}/product/${product.id}`,
+    brand: { "@type": "Brand", name: "CampSwap" },
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "NGN",
+      price: Number(product.price).toFixed(2),
+      availability:
+        product.status === "active"
+          ? "https://schema.org/InStock"
+          : "https://schema.org/SoldOut",
+      seller: { "@type": "Person", name: sellerNameRaw },
+      url: `${appUrl}/product/${product.id}`,
+    },
+    ...(product.condition
+      ? { itemCondition: `https://schema.org/${product.condition === "new" ? "NewCondition" : "UsedCondition"}` }
+      : {}),
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <div className="ut-app">
       <Navbar />
       <main className="ut-main">
@@ -151,17 +240,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                   )}
                 </div>
                 {/* Wishlist heart */}
-                <button
-                  aria-label="Save"
-                  style={{
-                    width: 34, height: 34, borderRadius: "50%",
-                    background: "rgba(255,255,255,0.92)", border: "none",
-                    display: "grid", placeItems: "center", cursor: "pointer",
-                    backdropFilter: "blur(6px)",
-                  }}
-                >
-                  <Heart size={15} style={{ color: "var(--ut-ink)" }} />
-                </button>
+                <WishlistBtn
+                  productId={product.id}
+                  initialLiked={isWishlisted}
+                  isLoggedIn={!!user}
+                  size={15}
+                />
               </div>
             </div>
 
@@ -333,5 +417,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         </div>
       </main>
     </div>
+    </>
   );
 }

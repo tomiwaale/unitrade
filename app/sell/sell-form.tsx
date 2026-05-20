@@ -256,6 +256,26 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
                   <span style={{ fontSize: 12, fontFamily: "var(--ut-font-mono)", color: "var(--ut-ink-soft)" }}>4.8</span>
                 </span>
               </div>
+              {/* Condition + deal type preview */}
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "5px 0 8px" }}>
+                {(() => {
+                  const COND_COLOR: Record<string, string> = { "new": "#16803c", "like-new": "#15803d", "good": "#1d4ed8", "fair": "#b45309", "poor": "#b91c1c" };
+                  const COND_LABEL: Record<string, string> = { "new": "New", "like-new": "Like New", "good": "Good", "fair": "Fair", "poor": "Poor" };
+                  const DEAL_LABEL: Record<string, string> = { "cash-only": "Cash only", "cash-or-swap": "Cash or Swap", "swap-only": "Swap only" };
+                  const col = COND_COLOR[condition] ?? "#1d4ed8";
+                  return (
+                    <>
+                      <span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 7px", borderRadius: 999, background: `color-mix(in srgb, ${col} 12%, transparent)`, color: col, border: `1px solid color-mix(in srgb, ${col} 25%, transparent)` }}>
+                        {COND_LABEL[condition] ?? condition}
+                      </span>
+                      <span style={{ fontSize: 10.5, fontWeight: 500, padding: "2px 7px", borderRadius: 999, background: openTo === "cash-only" ? "color-mix(in srgb, #888 8%, transparent)" : "color-mix(in srgb, var(--ut-primary) 10%, transparent)", color: openTo === "cash-only" ? "var(--ut-ink-mute)" : "var(--ut-primary-ink)", border: "1px solid color-mix(in srgb, var(--ut-line) 80%, transparent)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {openTo !== "cash-only" && <ArrowLeftRight size={9} />}
+                        {DEAL_LABEL[openTo]}
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
               <div className="ut-card-price-row">
                 <span className="ut-price">
                   {price ? `₦${Number(price).toLocaleString()}` : "₦—"}

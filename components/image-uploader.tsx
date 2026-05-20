@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import imageCompression from "browser-image-compression";
+import { compressProductImage } from "@/lib/compress-image";
 import { createClient } from "@/lib/supabase/client";
 import { X, Loader2, Upload, Plus } from "lucide-react";
 
@@ -40,9 +40,7 @@ export default function ImageUploader({ max = 6, defaultValues = [], onChange }:
     setImages((prev) => [...prev, { id, url: "", uploading: true, progress: "compressing", error: "" }]);
 
     try {
-      const compressed = await imageCompression(file, {
-        maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true, fileType: "image/webp",
-      });
+      const compressed = await compressProductImage(file);
 
       setImages((prev) => prev.map((s) => s.id === id ? { ...s, progress: "uploading" } : s));
 

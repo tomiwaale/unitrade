@@ -16,9 +16,48 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const APP_URL =
+  process.env.APP_URL?.startsWith("http")
+    ? process.env.APP_URL
+    : "https://campswap.app";
+
 export const metadata: Metadata = {
-  title: "CampSwap · Campus Marketplace",
-  description: "Buy, sell, and swap with students next door.",
+  metadataBase: new URL(APP_URL),
+  title: {
+    default: "CampSwap — Buy, Sell & Swap at Nigerian Universities",
+    template: "%s | CampSwap",
+  },
+  description:
+    "The student marketplace for Nigerian universities. Buy cheap hostel items, textbooks, laptops, and more from verified students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT, ABU and beyond.",
+  keywords: [
+    "student marketplace Nigeria",
+    "buy sell university Nigeria",
+    "campus marketplace Nigeria",
+    "buy hostel items Nigeria",
+    "cheap textbooks Nigerian students",
+    "second hand laptop student Nigeria",
+    "UNILAG marketplace",
+    "UI Ibadan buy sell",
+    "OAU campus items",
+    "LASU student market",
+    "FUTA campus",
+    "UNIPORT marketplace",
+    "ABU Zaria student market",
+    "Covenant University marketplace",
+    "Babcock University buy sell",
+    "buy electronics student Nigeria",
+    "sell used items campus Nigeria",
+    "student to student sales Nigeria",
+    "hostel furniture Nigeria",
+    "campus swap Nigeria",
+  ],
+  openGraph: {
+    siteName: "CampSwap",
+    locale: "en_NG",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
+  alternates: { canonical: APP_URL },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

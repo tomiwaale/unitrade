@@ -1,6 +1,71 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
+
+const CATEGORY_META: Record<string, { title: string; description: string }> = {
+  textbooks: {
+    title: "Buy Second-Hand Textbooks at Nigerian Universities",
+    description:
+      "Find cheap used textbooks from students at UNILAG, UI, OAU, LASU, FUTA and more. Save money on course materials — buy directly from fellow students.",
+  },
+  electronics: {
+    title: "Buy Cheap Laptops, Phones & Electronics from Nigerian Students",
+    description:
+      "Student-priced laptops, smartphones, tablets and gadgets. Buy from verified students at Nigerian universities — safe, affordable, campus-to-campus.",
+  },
+  furniture: {
+    title: "Buy Cheap Hostel Furniture & Room Items in Nigeria",
+    description:
+      "Hostel beds, mattresses, shelves, fans, buckets and room essentials at student prices. Buy from graduating students clearing out their rooms across Nigerian campuses.",
+  },
+  clothing: {
+    title: "Buy Affordable Campus Fashion & Clothing from Nigerian Students",
+    description:
+      "Student fashion, school uniforms, and affordable clothing. Shop from fellow students on Nigerian campuses.",
+  },
+  other: {
+    title: "Buy Miscellaneous Campus Items from Nigerian Students",
+    description:
+      "Find everything else students sell on campus — musical instruments, sports gear, accessories and more.",
+  },
+  services: {
+    title: "Student Services — Tutoring, Tech Help & More at Nigerian Universities",
+    description:
+      "Hire student tutors, photographers, designers, and delivery riders on your campus. Browse services offered by verified Nigerian university students.",
+  },
+};
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const params  = await searchParams;
+  const cat     = params.category as string | undefined;
+  const isServices = params.type === "services";
+  const key     = isServices ? "services" : (cat ?? "all");
+  const meta    = CATEGORY_META[key];
+
+  if (meta) {
+    return {
+      title: meta.title,
+      description: meta.description,
+      openGraph: { title: meta.title, description: meta.description },
+    };
+  }
+
+  return {
+    title: "Buy & Sell Campus Items at Nigerian Universities",
+    description:
+      "Browse thousands of listings from verified Nigerian university students. Textbooks, electronics, hostel furniture, clothing, services and more — all with escrow protection.",
+    openGraph: {
+      title: "Campus Marketplace Nigeria — CampSwap",
+      description:
+        "Buy cheap student items at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ Nigerian campuses. Safe escrow payments.",
+    },
+  };
+}
 import {
   MapPin, BookOpen, Laptop, Sofa, Shirt, Package,
   PlusCircle, LayoutGrid, Briefcase, LayoutList,
@@ -68,24 +133,28 @@ export default async function CatalogPage({
   const supabase = await createClient();
   const search = await searchParams;
 
-  const categoryFilter = search.category ? (search.category as string).toLowerCase() : null;
-  const typeFilter     = search.type === "services" ? "service" : "item";
-  const isServices     = typeFilter === "service";
-  const qFilter        = search.q ? (search.q as string) : null;
-  const sortFilter     = (search.sort as string) || "recent";
-  const maxPrice       = search.max_price ? Number(search.max_price) : null;
-  const todayOnly      = search.today === "1";
-  const viewMode       = (search.view as string) || "grid";
-  const openToFilter   = (search.open_to as string) || null;
+  const categoryFilter   = search.category ? (search.category as string).toLowerCase() : null;
+  const typeFilter       = search.type === "services" ? "service" : "item";
+  const isServices       = typeFilter === "service";
+  const qFilter          = search.q ? (search.q as string) : null;
+  const sortFilter       = (search.sort as string) || "recent";
+  const maxPrice         = search.max_price ? Number(search.max_price) : null;
+  const todayOnly        = search.today === "1";
+  const viewMode         = (search.view as string) || "grid";
+  const openToFilter     = (search.open_to as string) || null;
+  const conditionFilter  = (search.condition as string) || null;
+  const universityFilter = search.university ? (search.university as string) : null;
 
   const baseParams: Record<string, string | null> = {
-    type:      isServices ? "services" : null,
-    category:  categoryFilter,
-    sort:      sortFilter !== "recent" ? sortFilter : null,
-    max_price: maxPrice ? String(maxPrice) : null,
-    today:     todayOnly ? "1" : null,
-    open_to:   openToFilter,
-    q:         qFilter,
+    type:       isServices ? "services" : null,
+    category:   categoryFilter,
+    sort:       sortFilter !== "recent" ? sortFilter : null,
+    max_price:  maxPrice ? String(maxPrice) : null,
+    today:      todayOnly ? "1" : null,
+    open_to:    openToFilter,
+    condition:  conditionFilter,
+    q:          qFilter,
+    university: universityFilter,
   };
 
   const cats    = isServices ? SERVICE_CATS : CATEGORIES;
@@ -106,32 +175,50 @@ export default async function CatalogPage({
     countMap[c] = (countMap[c] ?? 0) + 1;
   }
 
-  // ─── Fetch user name + wishlist for personalization ───
+  // ─── Fetch user name + wishlist + university for personalization ───
   let firstName: string | null = null;
+  let userUniversity: string | null = null;
   let wishlistIds = new Set<string>();
+  let isLoggedIn = false;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      isLoggedIn = true;
       const [profileRes, wishlistRes] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+        supabase.from("profiles").select("full_name, university").eq("id", user.id).single(),
         supabase.from("wishlists").select("product_id").eq("user_id", user.id),
       ]);
       firstName = profileRes.data?.full_name?.split(" ")[0] ?? null;
+      userUniversity = profileRes.data?.university ?? null;
       wishlistIds = new Set(wishlistRes.data?.map((w) => w.product_id) ?? []);
     }
   } catch {}
 
+  // ─── If filtering by university, resolve seller IDs first ───
+  let universitySellerIds: string[] | null = null;
+  if (universityFilter) {
+    const { data: uniProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("university", universityFilter);
+    universitySellerIds = uniProfiles?.map((p) => p.id) ?? [];
+  }
+
   // ─── Fetch products ───
   let query = supabase
     .from("products")
-    .select("id, title, price, images, category, location, listing_type, open_to, created_at")
+    .select("id, title, price, images, category, condition, location, listing_type, open_to, created_at, seller:profiles!seller_id(university)")
     .eq("status", "active")
     .eq("listing_type", typeFilter);
 
-  if (categoryFilter) query = query.eq("category", categoryFilter);
-  if (qFilter)        query = query.ilike("title", `%${qFilter}%`);
-  if (maxPrice)       query = query.lte("price", maxPrice);
-  if (openToFilter)   query = query.eq("open_to", openToFilter);
+  if (categoryFilter)           query = query.eq("category", categoryFilter);
+  if (qFilter)                  query = query.or(`title.ilike.%${qFilter}%,description.ilike.%${qFilter}%`);
+  if (maxPrice)                 query = query.lte("price", maxPrice);
+  if (openToFilter)             query = query.eq("open_to", openToFilter);
+  if (conditionFilter)          query = query.eq("condition", conditionFilter);
+  if (universitySellerIds)      query = universitySellerIds.length > 0
+    ? query.in("seller_id", universitySellerIds)
+    : query.eq("seller_id", "00000000-0000-0000-0000-000000000000"); // no sellers → empty result
   if (todayOnly) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -143,7 +230,15 @@ export default async function CatalogPage({
   else                             query = query.order("created_at", { ascending: false });
 
   const { data: products } = await query;
-  const items = products ?? [];
+  let items = products ?? [];
+
+  // Bubble same-university listings to the top (stable — preserves secondary sort)
+  if (userUniversity && items.length > 0) {
+    items = [
+      ...items.filter((p) => (p.seller as any)?.university === userUniversity),
+      ...items.filter((p) => (p.seller as any)?.university !== userUniversity),
+    ];
+  }
 
   const SORT_CHIPS = [
     { label: "Recently posted", value: "recent",       key: "sort" },
@@ -157,6 +252,26 @@ export default async function CatalogPage({
     { label: "Cash or swap", value: "cash-or-swap", key: "open_to" },
     { label: "Swap only",    value: "swap-only",    key: "open_to" },
   ];
+
+  const CONDITION_LABEL: Record<string, string> = {
+    "new":       "New",
+    "like-new":  "Like New",
+    "good":      "Good",
+    "fair":      "Fair",
+    "poor":      "Poor",
+  };
+  const CONDITION_COLOR: Record<string, string> = {
+    "new":       "#16803c",
+    "like-new":  "#15803d",
+    "good":      "#1d4ed8",
+    "fair":      "#b45309",
+    "poor":      "#b91c1c",
+  };
+  const DEAL_LABEL: Record<string, string> = {
+    "cash-only":    "Cash only",
+    "cash-or-swap": "Cash or Swap",
+    "swap-only":    "Swap only",
+  };
 
   return (
     <div className="ut-app">
@@ -217,7 +332,9 @@ export default async function CatalogPage({
 
         {/* ── Filter rail ── */}
         <div className="ut-filter-rail" style={{ marginBottom: 20, flexWrap: "wrap", rowGap: 8 }}>
-          <span className="label">Sort by</span>
+
+          {/* Sort */}
+          <span className="label">Sort</span>
           {SORT_CHIPS.map((chip) => {
             let isActive = false;
             if (chip.key === "sort") {
@@ -234,61 +351,88 @@ export default async function CatalogPage({
               chip.key === "max_price" ? { max_price: maxPrice === Number(chip.value) ? null : chip.value, sort: null, today: null } :
                                          { today: todayOnly ? null : "1", sort: null, max_price: null };
             return (
-              <Link
-                key={chip.label}
-                href={buildHref(baseParams, override)}
-                className="ut-chip"
-                data-active={isActive ? "true" : "false"}
-              >
+              <Link key={chip.label} href={buildHref(baseParams, override)} className="ut-chip" data-active={isActive ? "true" : "false"}>
                 {chip.label}
               </Link>
             );
           })}
 
-          {/* Swap filter chips */}
+          {/* Condition */}
           <span style={{ width: 1, height: 18, background: "var(--ut-line)", margin: "0 2px", alignSelf: "center" }} />
-          <span className="label" style={{ margin: 0 }}>Deal type</span>
-          {SWAP_CHIPS.map((chip) => {
-            const isActive = openToFilter === chip.value;
-            const override: Record<string, string | null> = {
-              open_to: isActive ? null : chip.value,
-            };
+          <span className="label" style={{ margin: 0 }}>Condition</span>
+          {(["new", "like-new", "good", "fair", "poor"] as const).map((val) => {
+            const isActive = conditionFilter === val;
             return (
               <Link
-                key={chip.label}
-                href={buildHref(baseParams, override)}
+                key={val}
+                href={buildHref(baseParams, { condition: isActive ? null : val })}
                 className="ut-chip"
                 data-active={isActive ? "true" : "false"}
-                style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  ...(isActive ? { background: `color-mix(in srgb, ${CONDITION_COLOR[val]} 15%, transparent)`, color: CONDITION_COLOR[val], borderColor: `color-mix(in srgb, ${CONDITION_COLOR[val]} 30%, transparent)` } : {}),
+                }}
               >
-                <ArrowLeftRight size={11} />
+                {CONDITION_LABEL[val]}
+              </Link>
+            );
+          })}
+
+          {/* Deal type */}
+          <span style={{ width: 1, height: 18, background: "var(--ut-line)", margin: "0 2px", alignSelf: "center" }} />
+          <span className="label" style={{ margin: 0 }}>Deal type</span>
+          {([
+            { label: "Cash only",    value: "cash-only"    },
+            { label: "Cash or Swap", value: "cash-or-swap" },
+            { label: "Swap only",    value: "swap-only"    },
+          ] as const).map((chip) => {
+            const isActive = openToFilter === chip.value;
+            return (
+              <Link
+                key={chip.value}
+                href={buildHref(baseParams, { open_to: isActive ? null : chip.value })}
+                className="ut-chip"
+                data-active={isActive ? "true" : "false"}
+                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                {chip.value !== "cash-only" && <ArrowLeftRight size={10} />}
                 {chip.label}
               </Link>
             );
           })}
 
-          <button style={{
-            marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6,
-            fontSize: 12.5, padding: "6px 12px", borderRadius: 999,
-            border: "1px solid var(--ut-line)", background: "transparent",
-            color: "var(--ut-ink-soft)", cursor: "pointer",
-          }}>
-            <SlidersHorizontal size={12} /> More filters
-          </button>
+          {/* Active university badge */}
+          {universityFilter && (
+            <>
+              <span style={{ width: 1, height: 18, background: "var(--ut-line)", margin: "0 2px", alignSelf: "center" }} />
+              <Link
+                href={buildHref(baseParams, { university: null })}
+                className="ut-chip"
+                data-active="true"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+              >
+                <MapPin size={10} />
+                {universityFilter.length > 28 ? universityFilter.slice(0, 28) + "…" : universityFilter}
+              </Link>
+            </>
+          )}
+
         </div>
 
         {/* ── Section header ── */}
         <div className="ut-section-head" style={{ marginTop: 4 }}>
           <div>
-            <span className="ut-sub">On campus now</span>
+            <span className="ut-sub">{universityFilter ? universityFilter : "On campus now"}</span>
             <h2>
               {qFilter
                 ? `Results for "${qFilter}"`
                 : categoryFilter
                   ? (CAT_LABELS[categoryFilter] ?? categoryFilter)
-                  : firstName
-                    ? `For you, ${firstName}`
-                    : isServices ? "Services" : "All listings"
+                  : universityFilter
+                    ? isServices ? "Services" : "All listings"
+                    : firstName
+                      ? `For you, ${firstName}`
+                      : isServices ? "Services" : "All listings"
               }
             </h2>
           </div>
@@ -361,16 +505,37 @@ export default async function CatalogPage({
                     <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--ut-ink)" }}>
                       {item.title}
                     </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--ut-ink-mute)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <p style={{ margin: "0 0 5px", fontSize: 12, color: "var(--ut-ink-mute)", display: "flex", alignItems: "center", gap: 4 }}>
                       <MapPin size={10} /> {item.location ? item.location.split(",")[0] : "On campus"} · {CAT_LABELS[item.category] ?? item.category}
                     </p>
+                    <div style={{ display: "flex", gap: 5 }}>
+                      {item.condition && CONDITION_LABEL[item.condition] && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 999,
+                          background: `color-mix(in srgb, ${CONDITION_COLOR[item.condition]} 12%, transparent)`,
+                          color: CONDITION_COLOR[item.condition],
+                          border: `1px solid color-mix(in srgb, ${CONDITION_COLOR[item.condition]} 25%, transparent)`,
+                        }}>
+                          {CONDITION_LABEL[item.condition]}
+                        </span>
+                      )}
+                      {item.open_to && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 999,
+                          background: item.open_to === "cash-only"
+                            ? "color-mix(in srgb, var(--ut-ink) 6%, transparent)"
+                            : "color-mix(in srgb, var(--ut-primary) 10%, transparent)",
+                          color: item.open_to === "cash-only" ? "var(--ut-ink-mute)" : "var(--ut-primary-ink)",
+                          border: "1px solid color-mix(in srgb, var(--ut-line) 80%, transparent)",
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                        }}>
+                          {item.open_to !== "cash-only" && <ArrowLeftRight size={8} />}
+                          {DEAL_LABEL[item.open_to] ?? item.open_to}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    {item.open_to && item.open_to !== "cash-only" && (
-                      <span className="ut-badge" style={{ fontSize: 10 }}>
-                        <ArrowLeftRight size={9} /> SWAP
-                      </span>
-                    )}
                     <span style={{ fontFamily: "var(--ut-font-mono)", fontWeight: 600, fontSize: 16, color: "var(--ut-ink)" }}>
                       ₦{item.price.toLocaleString()}
                     </span>
@@ -404,7 +569,7 @@ export default async function CatalogPage({
                           <span className="ut-badge"><ArrowLeftRight size={9} /> SWAP</span>
                         )}
                       </div>
-                      <WishlistBtn productId={item.id} initialLiked={wishlistIds.has(item.id)} />
+                      <WishlistBtn productId={item.id} initialLiked={wishlistIds.has(item.id)} isLoggedIn={isLoggedIn} />
                     </div>
                   </div>
 
@@ -412,6 +577,32 @@ export default async function CatalogPage({
                     <h3 className="ut-card-title">{item.title}</h3>
                     <div className="ut-card-meta">
                       <span>{CAT_LABELS[item.category] ?? item.category}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "5px 0 8px" }}>
+                      {item.condition && CONDITION_LABEL[item.condition] && (
+                        <span style={{
+                          fontSize: 10.5, fontWeight: 600, padding: "2px 7px", borderRadius: 999,
+                          background: `color-mix(in srgb, ${CONDITION_COLOR[item.condition]} 12%, transparent)`,
+                          color: CONDITION_COLOR[item.condition],
+                          border: `1px solid color-mix(in srgb, ${CONDITION_COLOR[item.condition]} 25%, transparent)`,
+                        }}>
+                          {CONDITION_LABEL[item.condition]}
+                        </span>
+                      )}
+                      {item.open_to && (
+                        <span style={{
+                          fontSize: 10.5, fontWeight: 500, padding: "2px 7px", borderRadius: 999,
+                          background: item.open_to === "cash-only"
+                            ? "color-mix(in srgb, var(--ut-ink) 6%, transparent)"
+                            : "color-mix(in srgb, var(--ut-primary) 10%, transparent)",
+                          color: item.open_to === "cash-only" ? "var(--ut-ink-mute)" : "var(--ut-primary-ink)",
+                          border: "1px solid color-mix(in srgb, var(--ut-line) 80%, transparent)",
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                        }}>
+                          {item.open_to !== "cash-only" && <ArrowLeftRight size={9} />}
+                          {DEAL_LABEL[item.open_to] ?? item.open_to}
+                        </span>
+                      )}
                     </div>
                     <div className="ut-card-price-row">
                       <div>

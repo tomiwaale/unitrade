@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShoppingBag, AlertTriangle, Users, Package, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, AlertTriangle, Users, Package, ArrowLeft, Images } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin/disputes", label: "Disputes", icon: AlertTriangle, exact: false },
   { href: "/admin/users", label: "Users", icon: Users, exact: false },
   { href: "/admin/products", label: "Products", icon: Package, exact: false },
+  { href: "/admin/slides", label: "Hero Slides", icon: Images, exact: false },
 ];
 
 export default function AdminSidebar({ adminName }: { adminName: string }) {

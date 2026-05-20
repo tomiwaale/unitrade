@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { BookOpen, Laptop, Sofa, Shirt, Package, ShieldCheck, ArrowRight, Zap, Lock, MessageSquare, Tag, ArrowUpRight } from "lucide-react";
+import { ShieldCheck, Lock, MessageSquare, ArrowUpRight, Package } from "lucide-react";
+import HeroSlider from "@/components/hero-slider";
+
+export const metadata: Metadata = {
+  title: "CampSwap — Buy, Sell & Swap at Nigerian Universities",
+  description:
+    "Nigeria's student marketplace. Buy cheap hostel items, second-hand textbooks, laptops and electronics from verified students. Secure escrow payments. Free to join.",
+  openGraph: {
+    title: "CampSwap — Buy, Sell & Swap at Nigerian Universities",
+    description:
+      "Buy hostel furniture, textbooks, electronics and more from students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ campuses across Nigeria.",
+    type: "website",
+  },
+};
 
 const categories = [
   { name: "Textbooks",   emoji: "📚", value: "textbooks"   },
@@ -17,6 +31,8 @@ export default async function Home() {
   const [
     { count: listingCount },
     { data: featured },
+    { data: slides },
+    { data: intervalSetting },
   ] = await Promise.all([
     supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase
@@ -25,11 +41,22 @@ export default async function Home() {
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(2),
+    supabase
+      .from("hero_slides")
+      .select("id, title, subtitle, image_url, cta_label, cta_href")
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "hero_slide_interval")
+      .single(),
   ]);
 
-  const featuredItem  = featured?.[0] ?? null;
-  const secondItem    = featured?.[1] ?? null;
-  const activeCount   = (listingCount ?? 0).toLocaleString();
+  const featuredItem    = featured?.[0] ?? null;
+  const activeCount     = (listingCount ?? 0).toLocaleString();
+  const heroSlides      = slides ?? [];
+  const slideInterval   = Number(intervalSetting?.value ?? 10);
 
   return (
     <div className="ut-app">
@@ -58,27 +85,7 @@ export default async function Home() {
       <main className="ut-main">
         {/* ── Hero ── */}
         <section className="ut-hero">
-          <div className="ut-hero-main">
-            <div>
-              <span className="ut-hero-eyebrow">Live · Campus Marketplace</span>
-              <h1 className="ut-hero-title">
-                Buy, sell, or <em>swap</em> with students next door.
-              </h1>
-            </div>
-            <div className="ut-hero-meta">
-              <span><b>{activeCount}</b> active listings</span>
-              <span><b>₦0</b> listing fees</span>
-              <span><b>Escrow</b> protected</span>
-            </div>
-            <div className="ut-hero-cta-row">
-              <Link href="/sell" className="ut-cta">
-                <Zap size={14} /> Post a listing
-              </Link>
-              <Link href="/catalog" className="ut-cta ut-cta-ghost">
-                <ArrowRight size={14} /> Browse listings
-              </Link>
-            </div>
-          </div>
+          <HeroSlider slides={heroSlides} activeCount={activeCount} interval={slideInterval} />
 
           <div className="ut-hero-side">
             {/* Featured product card */}
@@ -193,6 +200,76 @@ export default async function Home() {
           ))}
         </div>
 
+        {/* ── Universities ── */}
+        <div style={{ marginTop: 48 }}>
+          <div className="ut-section-head">
+            <div>
+              <span className="ut-sub">Nationwide</span>
+              <h2>Built for every campus in Nigeria</h2>
+            </div>
+          </div>
+          <p style={{ margin: "0 0 24px", fontSize: 14, color: "var(--ut-ink-soft)", lineHeight: 1.6, maxWidth: 560 }}>
+            Students from over 50 universities already use CampSwap to buy and sell hostel items, textbooks,
+            electronics, and services — safely, on campus, student-to-student.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 32 }}>
+            {[
+              "UNILAG", "University of Ibadan", "OAU Ile-Ife",
+              "LASU", "FUTA", "UNIPORT", "ABU Zaria",
+              "Covenant University", "Babcock University", "UNIBEN",
+              "UNILORIN", "UNIJOS", "BUK", "UNN",
+              "Redeemer's University", "Pan-Atlantic University",
+              "LASUSTECH", "MAPOLY", "YABATECH", "FUPRE",
+            ].map((uni) => (
+              <span
+                key={uni}
+                style={{
+                  padding: "5px 12px", borderRadius: 999, fontSize: 12.5,
+                  background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
+                  color: "var(--ut-ink-soft)", fontWeight: 500,
+                }}
+              >
+                {uni}
+              </span>
+            ))}
+            <span style={{
+              padding: "5px 12px", borderRadius: 999, fontSize: 12.5,
+              background: "var(--ut-primary-tint)", border: "1px solid color-mix(in srgb, var(--ut-primary) 20%, transparent)",
+              color: "var(--ut-primary-ink)", fontWeight: 500,
+            }}>
+              + many more
+            </span>
+          </div>
+
+          {/* Popular search intents — semantic keywords for Google */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+            {[
+              { label: "Cheap hostel furniture",    href: "/catalog?category=furniture",   emoji: "🛋️" },
+              { label: "Second-hand textbooks",     href: "/catalog?category=textbooks",   emoji: "📚" },
+              { label: "Used laptops & phones",     href: "/catalog?category=electronics", emoji: "💻" },
+              { label: "Campus fashion & clothing", href: "/catalog?category=clothing",    emoji: "👗" },
+              { label: "Student services & tutoring", href: "/catalog?type=services",      emoji: "⚡" },
+              { label: "Everything else",           href: "/catalog?category=other",       emoji: "📦" },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "12px 14px", borderRadius: "var(--ut-radius)",
+                  background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
+                  textDecoration: "none", color: "var(--ut-ink)",
+                  fontSize: 13.5, fontWeight: 500,
+                  transition: "border-color 0.15s",
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{item.emoji}</span>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* ── Bottom CTA ── */}
         <div style={{
           marginTop: 48, borderRadius: "var(--ut-radius-lg)",
@@ -226,6 +303,18 @@ export default async function Home() {
           <span><b>Escrow</b> protected</span>
           <span><b>NIN</b> verified sellers</span>
           <span>Powered by <b>Paystack</b></span>
+        </div>
+
+        {/* Footer links */}
+        <div style={{
+          display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap",
+          padding: "20px 0 8px", fontSize: 12.5, color: "var(--ut-ink-mute)",
+        }}>
+          <Link href="/privacy" style={{ color: "var(--ut-ink-mute)", textDecoration: "none" }}>Privacy Policy</Link>
+          <span>·</span>
+          <Link href="/terms" style={{ color: "var(--ut-ink-mute)", textDecoration: "none" }}>Terms of Use</Link>
+          <span>·</span>
+          <span>© {new Date().getFullYear()} CampSwap</span>
         </div>
       </main>
     </div>
