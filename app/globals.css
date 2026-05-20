@@ -996,6 +996,24 @@
   /* Main content: reduce horizontal padding, add space for bottom nav */
   .ut-main { padding: 14px 14px 96px; }
 
+  /* Landing page nav: hide Browse link (hero CTA covers it on mobile) */
+  .ut-landing-browse { display: none; }
+
+  /* Hero main: tighter padding on mobile */
+  .ut-hero-main { padding: 22px 20px 20px; min-height: 220px; }
+
+  /* Hero side: side-by-side cards to reduce vertical height */
+  .ut-hero-side { grid-template-rows: auto; grid-template-columns: 1fr 1fr; }
+  .ut-hero-card { min-height: auto; }
+  .ut-hero-card h3 { font-size: 15px; line-height: 1.25; }
+
+  /* Bottom CTA section: reduce padding and heading size */
+  .ut-bottom-cta { padding: 28px 20px !important; }
+  .ut-bottom-cta h2 { font-size: 20px !important; }
+
+  /* Landing page main: no bottom nav, so less bottom padding */
+  .ut-landing-main { padding-bottom: 40px !important; }
+
   /* Grid: 2 columns on phones */
   .ut-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1036,6 +1054,11 @@
 
   /* Section head right side: shrink */
   .ut-section-head > div:last-child { font-size: 11px; }
+}
+
+/* Small phones — categories switch to 2 columns */
+@media (max-width: 480px) {
+  .ut-cat-row { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
 }
 
 /* Very small phones — 375px and below */

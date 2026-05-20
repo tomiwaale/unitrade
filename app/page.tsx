@@ -69,7 +69,7 @@ export default async function Home() {
           </Link>
           <div style={{ flex: 1 }} />
           <div className="ut-nav-actions">
-            <Link href="/catalog" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "8px 14px" }}>
+            <Link href="/catalog" className="ut-cta ut-cta-ghost ut-landing-browse" style={{ fontSize: 13, padding: "8px 14px" }}>
               Browse
             </Link>
             <Link href="/login" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "8px 14px" }}>
@@ -82,7 +82,7 @@ export default async function Home() {
         </div>
       </header>
 
-      <main className="ut-main">
+      <main className="ut-main ut-landing-main">
         {/* ── Hero ── */}
         <section className="ut-hero">
           <HeroSlider slides={heroSlides} activeCount={activeCount} interval={slideInterval} />
@@ -271,7 +271,7 @@ export default async function Home() {
         </div>
 
         {/* ── Bottom CTA ── */}
-        <div style={{
+        <div className="ut-bottom-cta" style={{
           marginTop: 48, borderRadius: "var(--ut-radius-lg)",
           background: "linear-gradient(135deg, var(--ut-primary) 0%, var(--ut-primary-ink) 100%)",
           padding: "40px 36px", color: "white",
