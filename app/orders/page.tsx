@@ -120,7 +120,7 @@ export default async function OrdersPage({
         )}
 
         <div className="ut-ticker">
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
           <span>Orders dashboard</span>
           <span>Escrow <b>protected</b></span>
           <span>Powered by <b>Paystack</b></span>

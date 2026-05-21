@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Use · CampSwap",
-  description: "The rules and agreements that govern your use of CampSwap.",
+  title: "Terms of Use · KolejSwap",
+  description: "The rules and agreements that govern your use of KolejSwap.",
 };
 
 const EFFECTIVE_DATE = "20 May 2025";
@@ -36,7 +36,7 @@ export default function TermsPage() {
         <div className="ut-nav-inner">
           <Link href="/" className="ut-logo">
             <span className="ut-logo-mark">u</span>
-            <span>CampSwap</span>
+            <span>KolejSwap</span>
           </Link>
           <div style={{ flex: 1 }} />
           <div className="ut-nav-actions">
@@ -60,7 +60,7 @@ export default function TermsPage() {
             Terms of Use
           </h1>
           <p style={{ fontSize: 14, color: "var(--ut-ink-mute)", margin: 0 }}>
-            Effective date: {EFFECTIVE_DATE} &nbsp;·&nbsp; Read carefully before using CampSwap
+            Effective date: {EFFECTIVE_DATE} &nbsp;·&nbsp; Read carefully before using KolejSwap
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export default function TermsPage() {
           borderRadius: "var(--ut-radius)", padding: "16px 20px", marginBottom: 40,
           fontSize: 14, color: "var(--ut-primary-ink)", lineHeight: 1.6,
         }}>
-          <b>Plain-English summary:</b> CampSwap is for verified Nigerian university students only.
+          <b>Plain-English summary:</b> KolejSwap is for verified Nigerian university students only.
           Be honest in your listings, trade fairly, and use our escrow system for all payments.
           Fraud, prohibited items, or abuse will result in permanent account suspension.
         </div>
@@ -109,26 +109,26 @@ export default function TermsPage() {
         {/* Sections */}
         <Section id="acceptance" title="1. Acceptance of Terms">
           <P>
-            By registering for or using CampSwap (&quot;the Platform&quot;), you agree to be bound by
+            By registering for or using KolejSwap (&quot;the Platform&quot;), you agree to be bound by
             these Terms of Use (&quot;Terms&quot;) and our{" "}
             <Link href="/privacy" style={{ color: "var(--ut-primary)" }}>Privacy Policy</Link>.
             If you do not agree to these Terms, you may not use the Platform.
           </P>
           <P>
-            These Terms constitute a legally binding agreement between you and CampSwap.
+            These Terms constitute a legally binding agreement between you and KolejSwap.
             We reserve the right to update these Terms at any time. Continued use of the Platform
             after any change constitutes acceptance of the updated Terms.
           </P>
         </Section>
 
         <Section id="eligibility" title="2. Eligibility">
-          <P>To use CampSwap, you must:</P>
+          <P>To use KolejSwap, you must:</P>
           <Ul items={[
             "Be at least 18 years of age",
             "Be a current or recently graduated student of a recognised Nigerian university or polytechnic",
             "Hold a valid Nigerian National Identification Number (NIN)",
             "Have a valid Nigerian bank account for payouts",
-            "Not have been previously suspended or banned from CampSwap",
+            "Not have been previously suspended or banned from KolejSwap",
           ]} />
           <P>
             By creating an account, you confirm that all information you provide — including your
@@ -146,10 +146,10 @@ export default function TermsPage() {
           </P>
           <P>
             If you suspect unauthorised access to your account, notify us immediately at{" "}
-            <a href="mailto:support@campswap.ng" style={{ color: "var(--ut-primary)" }}>support@campswap.ng</a>.
+            <a href="mailto:support@kolejswap.com" style={{ color: "var(--ut-primary)" }}>support@kolejswap.com</a>.
           </P>
           <P>
-            Each person may hold only one CampSwap account. Creating multiple accounts to circumvent
+            Each person may hold only one KolejSwap account. Creating multiple accounts to circumvent
             a ban, boost ratings, or gain unfair advantage is prohibited.
           </P>
         </Section>
@@ -173,14 +173,14 @@ export default function TermsPage() {
             "Not abuse the dispute or refund process",
           ]} />
           <P>
-            CampSwap is a marketplace platform. We are not a party to transactions between buyers
+            KolejSwap is a marketplace platform. We are not a party to transactions between buyers
             and sellers. We do not guarantee the quality, safety, or legality of listed items.
           </P>
         </Section>
 
         <Section id="prohibited" title="5. Prohibited Items & Conduct">
           <P>
-            The following are strictly prohibited on CampSwap. Violations will result in immediate
+            The following are strictly prohibited on KolejSwap. Violations will result in immediate
             account suspension and may be reported to law enforcement:
           </P>
           <P><b>Prohibited items:</b></P>
@@ -201,7 +201,7 @@ export default function TermsPage() {
             "Scamming, deceiving, or defrauding other users",
             "Harassment, threats, or abusive communication",
             "Creating fake reviews or manipulating ratings",
-            "Attempting to conduct transactions outside the CampSwap escrow system",
+            "Attempting to conduct transactions outside the KolejSwap escrow system",
             "Sharing another user's personal information without consent",
             "Using automated bots or scrapers on the Platform",
             "Impersonating another person or entity",
@@ -210,7 +210,7 @@ export default function TermsPage() {
 
         <Section id="escrow" title="6. Escrow & Payments">
           <P>
-            All payments on CampSwap are processed through our escrow system, powered by Paystack.
+            All payments on KolejSwap are processed through our escrow system, powered by Paystack.
             Here is how it works:
           </P>
           <Ul items={[
@@ -222,12 +222,12 @@ export default function TermsPage() {
           ]} />
           <P>
             <b>You must not</b> arrange payment outside the escrow system (e.g. direct bank transfers,
-            cash, or mobile money). CampSwap provides no buyer or seller protection for off-platform
+            cash, or mobile money). KolejSwap provides no buyer or seller protection for off-platform
             transactions.
           </P>
           <P>
             Paystack&apos;s standard transaction fees apply and are displayed at checkout.
-            CampSwap does not charge additional listing or transaction fees at this time.
+            KolejSwap does not charge additional listing or transaction fees at this time.
           </P>
         </Section>
 
@@ -239,20 +239,20 @@ export default function TermsPage() {
           <P>Our dispute resolution process:</P>
           <Ul items={[
             "Both parties are notified and asked to provide evidence (photos, chat logs, receipts)",
-            "A CampSwap moderator reviews the case within 3–5 business days",
+            "A KolejSwap moderator reviews the case within 3–5 business days",
             "We may request additional information from either party",
             "Our decision on fund release is final and binding",
             "Repeated frivolous disputes may result in account restriction",
           ]} />
           <P>
-            CampSwap acts as a neutral mediator. We reserve the right to refund the buyer or
+            KolejSwap acts as a neutral mediator. We reserve the right to refund the buyer or
             release funds to the seller based on the evidence presented.
           </P>
         </Section>
 
         <Section id="fees" title="8. Fees">
           <P>
-            Listing on CampSwap is currently <b>free</b>. We do not charge sellers a commission
+            Listing on KolejSwap is currently <b>free</b>. We do not charge sellers a commission
             or listing fee. Paystack&apos;s standard payment processing fees (1.5% + ₦100 per
             transaction, capped at ₦2,000) are passed through at checkout.
           </P>
@@ -264,19 +264,19 @@ export default function TermsPage() {
 
         <Section id="intellectual-property" title="9. Intellectual Property">
           <P>
-            By uploading images or content to CampSwap, you grant us a non-exclusive, royalty-free
+            By uploading images or content to KolejSwap, you grant us a non-exclusive, royalty-free
             licence to display that content on the Platform for the purposes of operating the
             marketplace. You retain full ownership of your content.
           </P>
           <P>
-            The CampSwap name, logo, design, and platform code are owned by CampSwap and may not
+            The KolejSwap name, logo, design, and platform code are owned by KolejSwap and may not
             be copied, reproduced, or used without written permission.
           </P>
         </Section>
 
         <Section id="liability" title="10. Limitation of Liability">
           <P>
-            CampSwap is a marketplace platform and is not responsible for:
+            KolejSwap is a marketplace platform and is not responsible for:
           </P>
           <Ul items={[
             "The quality, safety, accuracy, or legality of listed items",
@@ -285,7 +285,7 @@ export default function TermsPage() {
             "Service interruptions, data loss, or technical errors",
           ]} />
           <P>
-            To the fullest extent permitted by Nigerian law, CampSwap&apos;s total liability to
+            To the fullest extent permitted by Nigerian law, KolejSwap&apos;s total liability to
             you for any claim arising from your use of the Platform shall not exceed the amount
             of the transaction in dispute.
           </P>
@@ -309,7 +309,7 @@ export default function TermsPage() {
           ]} />
           <P>
             Suspended users may appeal by emailing{" "}
-            <a href="mailto:support@campswap.ng" style={{ color: "var(--ut-primary)" }}>support@campswap.ng</a>.
+            <a href="mailto:support@kolejswap.com" style={{ color: "var(--ut-primary)" }}>support@kolejswap.com</a>.
             We are not obligated to restore access.
           </P>
         </Section>
@@ -328,11 +328,11 @@ export default function TermsPage() {
             background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
             borderRadius: "var(--ut-radius-sm)", padding: "16px 20px", fontSize: 14,
           }}>
-            <p style={{ margin: "0 0 4px" }}><b>CampSwap Support</b></p>
+            <p style={{ margin: "0 0 4px" }}><b>KolejSwap Support</b></p>
             <p style={{ margin: "0 0 4px", color: "var(--ut-ink-soft)" }}>
               Email:{" "}
-              <a href="mailto:support@campswap.ng" style={{ color: "var(--ut-primary)" }}>
-                support@campswap.ng
+              <a href="mailto:support@kolejswap.com" style={{ color: "var(--ut-primary)" }}>
+                support@kolejswap.com
               </a>
             </p>
             <p style={{ margin: 0, color: "var(--ut-ink-soft)" }}>Response time: within 2 business days</p>
@@ -346,7 +346,7 @@ export default function TermsPage() {
         }}>
           <Link href="/" style={{ color: "var(--ut-ink-mute)", textDecoration: "none" }}>← Home</Link>
           <Link href="/privacy" style={{ color: "var(--ut-primary)", textDecoration: "none" }}>Privacy Policy</Link>
-          <span>© {new Date().getFullYear()} CampSwap</span>
+          <span>© {new Date().getFullYear()} KolejSwap</span>
         </div>
       </main>
     </div>

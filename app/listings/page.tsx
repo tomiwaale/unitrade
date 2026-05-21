@@ -117,7 +117,7 @@ export default async function ListingsPage() {
         )}
 
         <div className="ut-ticker">
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
           <span><b>{products?.length ?? 0}</b> listings</span>
           <span>Your storefront</span>
         </div>

@@ -10,7 +10,7 @@ export async function sendAdminEmail(subject: string, html: string) {
     return;
   }
 
-  const fromDomain = process.env.EMAIL_FROM ?? "noreply@campswap.app";
+  const fromDomain = process.env.EMAIL_FROM ?? "noreply@kolejswap.com";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -19,7 +19,7 @@ export async function sendAdminEmail(subject: string, html: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: `CampSwap <${fromDomain}>`,
+      from: `KolejSwap <${fromDomain}>`,
       to: [adminEmail],
       subject,
       html,

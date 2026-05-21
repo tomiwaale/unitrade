@@ -60,7 +60,7 @@ export async function generateMetadata({
     description:
       "Browse thousands of listings from verified Nigerian university students. Textbooks, electronics, hostel furniture, clothing, services and more — all with escrow protection.",
     openGraph: {
-      title: "Campus Marketplace Nigeria — CampSwap",
+      title: "Campus Marketplace Nigeria — KolejSwap",
       description:
         "Buy cheap student items at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ Nigerian campuses. Safe escrow payments.",
     },
@@ -72,6 +72,7 @@ import {
   SlidersHorizontal, ArrowLeftRight,
 } from "lucide-react";
 import WishlistBtn from "./wishlist-btn";
+import { MobileFilterBar } from "./mobile-filter-bar";
 
 const CATEGORIES = [
   { label: "All",         value: null,          emoji: "🏷️", icon: LayoutGrid  },
@@ -330,8 +331,19 @@ export default async function CatalogPage({
           })}
         </div>
 
-        {/* ── Filter rail ── */}
-        <div className="ut-filter-rail" style={{ marginBottom: 20, flexWrap: "wrap", rowGap: 8 }}>
+        {/* ── Mobile filter bar (compact sort + filter button + bottom sheet) ── */}
+        <MobileFilterBar
+          baseParams={baseParams}
+          sortFilter={sortFilter}
+          maxPrice={maxPrice}
+          todayOnly={todayOnly}
+          conditionFilter={conditionFilter}
+          openToFilter={openToFilter}
+          universityFilter={universityFilter}
+        />
+
+        {/* ── Filter rail (desktop only — hidden on mobile via CSS) ── */}
+        <div className="ut-filter-rail ut-filter-rail-desktop" style={{ marginBottom: 20, flexWrap: "wrap", rowGap: 8 }}>
 
           {/* Sort */}
           <span className="label">Sort</span>
@@ -624,7 +636,7 @@ export default async function CatalogPage({
         )}
 
         <div className="ut-ticker">
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
           <span><b>{items.length}</b> listings shown</span>
           <span>Escrow <b>protected</b></span>
           <span>NIN <b>verified</b> sellers</span>

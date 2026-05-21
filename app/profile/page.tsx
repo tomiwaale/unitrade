@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
-import { CheckCircle2, MapPin, ArrowRight, Package, Star } from "lucide-react";
+import { CheckCircle2, MapPin, ArrowRight, Package, Star, Landmark } from "lucide-react";
 import LocationDisplay from "@/components/ui/location-display";
+import PayoutSetupCard from "./payout-setup";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -40,7 +41,7 @@ export default async function ProfilePage() {
   // ─── Profile ───────────────────────────────────────
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, university, created_at, recipient_code, nin_verified")
+    .select("full_name, university, created_at, recipient_code, nin_verified, bank_name, account_name, school_id_status")
     .eq("id", user.id)
     .single();
 
@@ -141,13 +142,22 @@ export default async function ProfilePage() {
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--ut-ink)" }}>
                 {profile.full_name}
               </h1>
-              {profile.nin_verified && (
+              {profile.school_id_status === "approved" && (
                 <span style={{
                   display: "inline-flex", alignItems: "center", gap: 5,
                   fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 999,
                   background: "var(--ut-primary-tint)", color: "var(--ut-primary-ink)",
                 }}>
                   <CheckCircle2 size={11} /> Verified · {uniAbbr(profile.university ?? "")}
+                </span>
+              )}
+              {profile.school_id_status === "pending" && (
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 999,
+                  background: "color-mix(in srgb, #ca8a04 12%, transparent)", color: "#92400e",
+                }}>
+                  ID under review
                 </span>
               )}
             </div>
@@ -186,6 +196,22 @@ export default async function ProfilePage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* ── Payout setup ── */}
+        <div style={{ marginBottom: 36 }}>
+          <div className="ut-section-head" style={{ marginTop: 0, marginBottom: 12 }}>
+            <div>
+              <span className="ut-sub">Seller settings</span>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Landmark size={18} /> Payout account
+              </h2>
+            </div>
+          </div>
+          <PayoutSetupCard
+            existingBank={profile.bank_name ?? null}
+            existingAccountName={profile.account_name ?? null}
+          />
         </div>
 
         {/* ── Active listings ── */}
@@ -356,9 +382,9 @@ export default async function ProfilePage() {
           marginTop: 32, display: "flex", gap: 10, flexWrap: "wrap",
           borderTop: "1px solid var(--ut-line)", paddingTop: 24,
         }}>
-          {!profile.nin_verified && (
+          {(!profile.school_id_status || profile.school_id_status === "none" || profile.school_id_status === "rejected") && (
             <Link href="/kyc" className="ut-cta ut-cta-primary" style={{ fontSize: 13, padding: "9px 16px" }}>
-              <CheckCircle2 size={14} /> Verify NIN to sell
+              <CheckCircle2 size={14} /> Upload school ID
             </Link>
           )}
           <Link href="/sell" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "9px 16px" }}>
@@ -370,10 +396,10 @@ export default async function ProfilePage() {
         </div>
 
         <div className="ut-ticker">
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
           <span>{profile.full_name}</span>
           <span>{profile.university}</span>
-          {profile.nin_verified && <span>NIN <b>verified</b></span>}
+          {profile.school_id_status === "approved" && <span>ID <b>verified</b></span>}
         </div>
       </main>
     </div>

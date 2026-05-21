@@ -87,7 +87,7 @@ export default function OrderActions({
       {showDisputeDialog && (
         <ConfirmDialog
           title="Report a problem with this order"
-          description="This will freeze the payment and notify CampSwap to review your case. Use this only if you did not receive the item or it was significantly different from the listing."
+          description="This will freeze the payment and notify KolejSwap to review your case. Use this only if you did not receive the item or it was significantly different from the listing."
           confirmLabel="File Dispute"
           confirmStyle={{ background: "#9B1C1C" }}
           onConfirm={handleDispute}

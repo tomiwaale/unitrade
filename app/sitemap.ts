@@ -5,7 +5,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl =
     process.env.APP_URL?.startsWith("http")
       ? process.env.APP_URL
-      : "https://campswap.app";
+      : "https://kolejswap.com";
   const supabase = await createClient();
 
   const { data: products } = await supabase

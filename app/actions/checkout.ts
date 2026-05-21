@@ -46,7 +46,7 @@ export async function createCheckoutSession(productId: string) {
     return { error: "Failed to create order. Please try again." };
   }
 
-  // No subaccount — full amount lands in CampSwap's Paystack balance for escrow.
+  // No subaccount — full amount lands in KolejSwap's Paystack balance for escrow.
   // Seller is paid via Paystack Transfer after buyer confirms receipt.
   let checkoutUrl: string;
   try {

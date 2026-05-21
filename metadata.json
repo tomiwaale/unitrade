@@ -1,5 +1,5 @@
 {
-  "name": "CampSwap Marketplace",
+  "name": "KolejSwap Marketplace",
   "description": "A secure marketplace connecting university students to buy and sell campus items.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

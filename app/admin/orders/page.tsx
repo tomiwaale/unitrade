@@ -35,7 +35,7 @@ export default async function AdminOrdersPage({
   const { data: orders } = await query;
 
   return (
-    <div style={{ padding: "40px 48px" }}>
+    <div className="ut-admin-page">
       <h1 style={{ fontWeight: 800, fontSize: 22, color: "var(--ut-ink)", marginBottom: 6 }}>Orders</h1>
       <p style={{ fontSize: 14, color: "var(--ut-ink-mute)", marginBottom: 24 }}>
         {orders?.length ?? 0} order{orders?.length !== 1 ? "s" : ""} found

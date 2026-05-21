@@ -19,13 +19,13 @@ const geistMono = Geist_Mono({
 const APP_URL =
   process.env.APP_URL?.startsWith("http")
     ? process.env.APP_URL
-    : "https://campswap.app";
+    : "https://kolejswap.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "CampSwap — Buy, Sell & Swap at Nigerian Universities",
-    template: "%s | CampSwap",
+    default: "KolejSwap — Buy, Sell & Swap at Nigerian Universities",
+    template: "%s | KolejSwap",
   },
   description:
     "The student marketplace for Nigerian universities. Buy cheap hostel items, textbooks, laptops, and more from verified students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT, ABU and beyond.",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     "campus swap Nigeria",
   ],
   openGraph: {
-    siteName: "CampSwap",
+    siteName: "KolejSwap",
     locale: "en_NG",
     type: "website",
   },

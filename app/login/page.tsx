@@ -32,7 +32,7 @@ export default function LoginPage() {
         {/* Logo */}
         <Link href="/" className="ut-logo" style={{ justifyContent: "center", marginBottom: 28, display: "flex" }}>
           <span className="ut-logo-mark">u</span>
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
         </Link>
 
         <div className="ut-auth-card">

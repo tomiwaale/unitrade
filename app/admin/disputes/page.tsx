@@ -15,7 +15,7 @@ export default async function AdminDisputesPage() {
     .order("disputed_at", { ascending: false });
 
   return (
-    <div style={{ padding: "40px 48px" }}>
+    <div className="ut-admin-page">
       <h1 style={{ fontWeight: 800, fontSize: 22, color: "var(--ut-ink)", marginBottom: 6 }}>Disputes</h1>
       <p style={{ fontSize: 14, color: "var(--ut-ink-mute)", marginBottom: 32 }}>
         {disputes?.length ?? 0} active dispute{disputes?.length !== 1 ? "s" : ""} requiring attention.
@@ -54,7 +54,7 @@ export default async function AdminDisputesPage() {
                   </span>
                 </div>
 
-                <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                <div className="ut-admin-3col">
                   {[
                     { label: "Product", main: product?.title ?? "Deleted product", sub: null },
                     { label: "Buyer", main: buyer?.full_name ?? "—", sub: buyer?.university },

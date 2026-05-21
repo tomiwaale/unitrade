@@ -186,7 +186,7 @@ export function Navbar() {
       <div className="ut-nav-inner">
         <Link href={isLoggedIn ? "/catalog" : "/"} className="ut-logo">
           <span className="ut-logo-mark">u</span>
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
         </Link>
 
         <form className="ut-search" onSubmit={handleSearch}>

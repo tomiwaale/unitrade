@@ -124,7 +124,7 @@ export async function transferToSeller(
       recipient: recipientCode,
       amount: amountInKobo,
       reference,
-      reason: "CampSwap order payout",
+      reason: "KolejSwap order payout",
     }),
   });
 

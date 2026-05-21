@@ -56,15 +56,15 @@ export async function generateMetadata(
     .eq("id", id)
     .single();
 
-  if (!product) return { title: "Listing not found · CampSwap" };
+  if (!product) return { title: "Listing not found · KolejSwap" };
 
-  const title       = `${product.title} — ₦${Number(product.price).toLocaleString()} · CampSwap`;
+  const title       = `${product.title} — ₦${Number(product.price).toLocaleString()} · KolejSwap`;
   const description = `${product.description?.slice(0, 140) ?? ""}${product.description?.length > 140 ? "…" : ""}`;
   const image       = product.images?.[0];
   const appUrl =
     process.env.APP_URL?.startsWith("http")
       ? process.env.APP_URL
-      : "https://campswap.app";
+      : "https://kolejswap.com";
 
   return {
     title,
@@ -73,7 +73,7 @@ export async function generateMetadata(
       title,
       description,
       url: `${appUrl}/product/${id}`,
-      siteName: "CampSwap",
+      siteName: "KolejSwap",
       ...(image ? { images: [{ url: image, width: 1200, height: 630, alt: product.title }] } : {}),
       type: "website",
     },
@@ -174,8 +174,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const appUrl =
     process.env.APP_URL?.startsWith("http")
       ? process.env.APP_URL
-      : "https://campswap.app";
-  const sellerNameRaw = product.profiles?.full_name ?? "CampSwap Seller";
+      : "https://kolejswap.com";
+  const sellerNameRaw = product.profiles?.full_name ?? "KolejSwap Seller";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -184,7 +184,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     description: product.description,
     image: product.images ?? [],
     url: `${appUrl}/product/${product.id}`,
-    brand: { "@type": "Brand", name: "CampSwap" },
+    brand: { "@type": "Brand", name: "KolejSwap" },
     offers: {
       "@type": "Offer",
       priceCurrency: "NGN",

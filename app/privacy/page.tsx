@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · CampSwap",
-  description: "How CampSwap collects, uses, and protects your personal information.",
+  title: "Privacy Policy · KolejSwap",
+  description: "How KolejSwap collects, uses, and protects your personal information.",
 };
 
 const EFFECTIVE_DATE = "20 May 2025";
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
         <div className="ut-nav-inner">
           <Link href="/" className="ut-logo">
             <span className="ut-logo-mark">u</span>
-            <span>CampSwap</span>
+            <span>KolejSwap</span>
           </Link>
           <div style={{ flex: 1 }} />
           <div className="ut-nav-actions">
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p style={{ fontSize: 14, color: "var(--ut-ink-mute)", margin: 0 }}>
-            Effective date: {EFFECTIVE_DATE} &nbsp;·&nbsp; Applies to all CampSwap users
+            Effective date: {EFFECTIVE_DATE} &nbsp;·&nbsp; Applies to all KolejSwap users
           </p>
         </div>
 
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
         }}>
           <b>Plain-English summary:</b> We collect only what we need to run a safe campus marketplace.
           We don&apos;t sell your data. We share it only with the payment and infrastructure providers
-          that power CampSwap. You can request deletion of your account at any time.
+          that power KolejSwap. You can request deletion of your account at any time.
         </div>
 
         {/* Table of contents */}
@@ -106,13 +106,13 @@ export default function PrivacyPage() {
         {/* Sections */}
         <Section id="who-we-are" title="1. Who We Are">
           <P>
-            CampSwap is a peer-to-peer campus marketplace that allows Nigerian university students
+            KolejSwap is a peer-to-peer campus marketplace that allows Nigerian university students
             to buy, sell, and swap goods and services within their campus communities. References to
-            &quot;CampSwap&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot; in this policy refer to the platform operator.
+            &quot;KolejSwap&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot; in this policy refer to the platform operator.
           </P>
           <P>
             This Privacy Policy explains how we collect, use, disclose, and safeguard your personal
-            information when you use our website and services. By creating an account or using CampSwap,
+            information when you use our website and services. By creating an account or using KolejSwap,
             you agree to the practices described here.
           </P>
         </Section>
@@ -146,7 +146,7 @@ export default function PrivacyPage() {
         </Section>
 
         <Section id="how-we-use-data" title="3. How We Use Your Data">
-          <P>We use your information solely to provide and improve CampSwap:</P>
+          <P>We use your information solely to provide and improve KolejSwap:</P>
           <Ul items={[
             "Create and manage your account",
             "Verify your identity and student status via NIN",
@@ -159,7 +159,7 @@ export default function PrivacyPage() {
           ]} />
           <P>
             We do <b>not</b> use your data for advertising profiling, sell it to third parties,
-            or share it for any purpose outside of running CampSwap.
+            or share it for any purpose outside of running KolejSwap.
           </P>
         </Section>
 
@@ -179,7 +179,7 @@ export default function PrivacyPage() {
               },
               {
                 name: "Vercel",
-                role: "Web hosting and CDN. Serves the CampSwap website globally.",
+                role: "Web hosting and CDN. Serves the KolejSwap website globally.",
                 url: "https://vercel.com/legal/privacy-policy",
               },
             ].map(({ name, role }) => (
@@ -227,14 +227,14 @@ export default function PrivacyPage() {
           ]} />
           <P>
             To exercise any of these rights, email us at{" "}
-            <a href="mailto:privacy@campswap.ng" style={{ color: "var(--ut-primary)" }}>privacy@campswap.ng</a>.
+            <a href="mailto:privacy@kolejswap.com" style={{ color: "var(--ut-primary)" }}>privacy@kolejswap.com</a>.
             We will respond within 30 days.
           </P>
         </Section>
 
         <Section id="cookies" title="7. Cookies & Tracking">
           <P>
-            CampSwap uses essential cookies only — specifically session cookies required for
+            KolejSwap uses essential cookies only — specifically session cookies required for
             authentication and security. We do not use advertising cookies, third-party tracking
             pixels, or analytics services that fingerprint individual users.
           </P>
@@ -246,7 +246,7 @@ export default function PrivacyPage() {
 
         <Section id="children" title="8. Children's Privacy">
           <P>
-            CampSwap is intended for university students aged 18 and above. We do not knowingly
+            KolejSwap is intended for university students aged 18 and above. We do not knowingly
             collect personal information from anyone under 18. If we become aware that a minor has
             created an account, we will delete the account and associated data promptly.
           </P>
@@ -256,7 +256,7 @@ export default function PrivacyPage() {
           <P>
             We may update this Privacy Policy from time to time. When we make material changes,
             we will notify you by email and display a notice on the platform at least 14 days
-            before the change takes effect. Continued use of CampSwap after the effective date
+            before the change takes effect. Continued use of KolejSwap after the effective date
             constitutes acceptance of the updated policy.
           </P>
         </Section>
@@ -267,11 +267,11 @@ export default function PrivacyPage() {
             background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
             borderRadius: "var(--ut-radius-sm)", padding: "16px 20px", fontSize: 14,
           }}>
-            <p style={{ margin: "0 0 4px" }}><b>CampSwap Data Privacy</b></p>
+            <p style={{ margin: "0 0 4px" }}><b>KolejSwap Data Privacy</b></p>
             <p style={{ margin: "0 0 4px", color: "var(--ut-ink-soft)" }}>
               Email:{" "}
-              <a href="mailto:privacy@campswap.ng" style={{ color: "var(--ut-primary)" }}>
-                privacy@campswap.ng
+              <a href="mailto:privacy@kolejswap.com" style={{ color: "var(--ut-primary)" }}>
+                privacy@kolejswap.com
               </a>
             </p>
             <p style={{ margin: 0, color: "var(--ut-ink-soft)" }}>Response time: within 30 days</p>
@@ -285,7 +285,7 @@ export default function PrivacyPage() {
         }}>
           <Link href="/" style={{ color: "var(--ut-ink-mute)", textDecoration: "none" }}>← Home</Link>
           <Link href="/terms" style={{ color: "var(--ut-primary)", textDecoration: "none" }}>Terms of Use</Link>
-          <span>© {new Date().getFullYear()} CampSwap</span>
+          <span>© {new Date().getFullYear()} KolejSwap</span>
         </div>
       </main>
     </div>

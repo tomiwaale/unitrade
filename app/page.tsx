@@ -3,13 +3,14 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ShieldCheck, Lock, MessageSquare, ArrowUpRight, Package } from "lucide-react";
 import HeroSlider from "@/components/hero-slider";
+import { LandingNav } from "@/components/landing-nav";
 
 export const metadata: Metadata = {
-  title: "CampSwap — Buy, Sell & Swap at Nigerian Universities",
+  title: "KolejSwap — Buy, Sell & Swap at Nigerian Universities",
   description:
     "Nigeria's student marketplace. Buy cheap hostel items, second-hand textbooks, laptops and electronics from verified students. Secure escrow payments. Free to join.",
   openGraph: {
-    title: "CampSwap — Buy, Sell & Swap at Nigerian Universities",
+    title: "KolejSwap — Buy, Sell & Swap at Nigerian Universities",
     description:
       "Buy hostel furniture, textbooks, electronics and more from students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ campuses across Nigeria.",
     type: "website",
@@ -61,26 +62,7 @@ export default async function Home() {
   return (
     <div className="ut-app">
       {/* Landing header */}
-      <header className="ut-nav">
-        <div className="ut-nav-inner">
-          <Link href="/" className="ut-logo">
-            <span className="ut-logo-mark">u</span>
-            <span>CampSwap</span>
-          </Link>
-          <div style={{ flex: 1 }} />
-          <div className="ut-nav-actions">
-            <Link href="/catalog" className="ut-cta ut-cta-ghost ut-landing-browse" style={{ fontSize: 13, padding: "8px 14px" }}>
-              Browse
-            </Link>
-            <Link href="/login" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "8px 14px" }}>
-              Sign in
-            </Link>
-            <Link href="/register" className="ut-cta ut-cta-primary" style={{ fontSize: 13, padding: "8px 14px" }}>
-              Join free
-            </Link>
-          </div>
-        </div>
-      </header>
+      <LandingNav />
 
       <main className="ut-main ut-landing-main">
         {/* ── Hero ── */}
@@ -147,11 +129,25 @@ export default async function Home() {
           ))}
         </div>
 
+        {/* ── Mobile trust bar ── */}
+        <div className="ut-mobile-trust">
+          <span className="ut-mobile-trust-item">
+            <Lock size={11} /> Escrow protected
+          </span>
+          <span className="ut-mobile-trust-sep">·</span>
+          <span className="ut-mobile-trust-item">
+            <ShieldCheck size={11} /> Verified sellers
+          </span>
+          <span className="ut-mobile-trust-sep">·</span>
+          <span className="ut-mobile-trust-item">Free to list</span>
+        </div>
+
         {/* ── How it works ── */}
+        <div className="ut-mobile-hide">
         <div className="ut-section-head">
           <div>
             <span className="ut-sub">Simple &amp; safe</span>
-            <h2>How CampSwap works</h2>
+            <h2>How KolejSwap works</h2>
           </div>
         </div>
 
@@ -199,6 +195,7 @@ export default async function Home() {
             </div>
           ))}
         </div>
+        </div>{/* end ut-mobile-hide: how it works */}
 
         {/* ── Universities ── */}
         <div style={{ marginTop: 48 }}>
@@ -209,10 +206,10 @@ export default async function Home() {
             </div>
           </div>
           <p style={{ margin: "0 0 24px", fontSize: 14, color: "var(--ut-ink-soft)", lineHeight: 1.6, maxWidth: 560 }}>
-            Students from over 50 universities already use CampSwap to buy and sell hostel items, textbooks,
+            Students from over 50 universities already use KolejSwap to buy and sell hostel items, textbooks,
             electronics, and services — safely, on campus, student-to-student.
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 32 }}>
+          <div className="ut-uni-pills">
             {[
               "UNILAG", "University of Ibadan", "OAU Ile-Ife",
               "LASU", "FUTA", "UNIPORT", "ABU Zaria",
@@ -242,7 +239,7 @@ export default async function Home() {
           </div>
 
           {/* Popular search intents — semantic keywords for Google */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+          <div className="ut-search-intents">
             {[
               { label: "Cheap hostel furniture",    href: "/catalog?category=furniture",   emoji: "🛋️" },
               { label: "Second-hand textbooks",     href: "/catalog?category=textbooks",   emoji: "📚" },
@@ -291,14 +288,14 @@ export default async function Home() {
             <Link href="/register" className="ut-cta" style={{ background: "white", color: "var(--ut-primary-ink)" }}>
               Create free account
             </Link>
-            <Link href="/catalog" className="ut-cta ut-cta-ghost" style={{ color: "white", borderColor: "rgba(255,255,255,0.3)" }}>
+            <Link href="/catalog" className="ut-cta ut-cta-ghost ut-mobile-cta-secondary" style={{ color: "white", borderColor: "rgba(255,255,255,0.3)" }}>
               Browse first
             </Link>
           </div>
         </div>
 
         <div className="ut-ticker">
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
           <span>Campus-only marketplace</span>
           <span><b>Escrow</b> protected</span>
           <span><b>NIN</b> verified sellers</span>
@@ -314,7 +311,7 @@ export default async function Home() {
           <span>·</span>
           <Link href="/terms" style={{ color: "var(--ut-ink-mute)", textDecoration: "none" }}>Terms of Use</Link>
           <span>·</span>
-          <span>© {new Date().getFullYear()} CampSwap</span>
+          <span>© {new Date().getFullYear()} KolejSwap</span>
         </div>
       </main>
     </div>

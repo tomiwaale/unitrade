@@ -24,7 +24,7 @@ export default async function AdminSlidesPage() {
   const slideInterval = Number(intervalSetting?.value ?? 10);
 
   return (
-    <div style={{ padding: "40px 48px" }}>
+    <div className="ut-admin-page">
       <h1 style={{ fontWeight: 800, fontSize: 22, color: "var(--ut-ink)", marginBottom: 6 }}>
         Hero Slides
       </h1>

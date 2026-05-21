@@ -57,7 +57,7 @@ export default async function AdminOverviewPage() {
   ];
 
   return (
-    <div style={{ padding: "40px 48px" }}>
+    <div className="ut-admin-page">
       <h1 style={{ fontWeight: 800, fontSize: 22, color: "var(--ut-ink)", marginBottom: 6 }}>Overview</h1>
       <p style={{ fontSize: 14, color: "var(--ut-ink-mute)", marginBottom: 32 }}>
         Platform summary across all users and orders.

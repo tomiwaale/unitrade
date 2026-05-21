@@ -96,6 +96,48 @@ export async function adminMarkRefunded(orderId: string) {
   return { success: true };
 }
 
+export async function adminApproveSchoolId(userId: string): Promise<void> {
+  try {
+    await requireAdmin();
+  } catch {
+    return;
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ school_id_status: "approved" })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[admin] approve school id error:", error);
+    return;
+  }
+
+  revalidatePath("/admin/users");
+}
+
+export async function adminRejectSchoolId(userId: string): Promise<void> {
+  try {
+    await requireAdmin();
+  } catch {
+    return;
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ school_id_status: "rejected" })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[admin] reject school id error:", error);
+    return;
+  }
+
+  revalidatePath("/admin/users");
+}
+
 export async function adminDeactivateProduct(productId: string) {
   try {
     await requireAdmin();

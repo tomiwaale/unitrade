@@ -253,7 +253,7 @@ export default async function SwapsPage() {
         )}
 
         <div className="ut-ticker" style={{ marginTop: 40 }}>
-          <span>CampSwap</span>
+          <span>KolejSwap</span>
           <span>Swap without cash</span>
           <span>No escrow needed</span>
           <span>Direct exchange</span>

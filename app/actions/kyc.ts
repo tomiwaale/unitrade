@@ -1,14 +1,11 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { kycSchema, type KYCInput } from "@/lib/validations/auth";
-import { verifyNIN } from "@/lib/nin";
 import { revalidatePath } from "next/cache";
 
-export async function submitNINVerification(input: KYCInput) {
-  const result = kycSchema.safeParse(input);
-  if (!result.success) {
-    return { error: result.error.issues[0].message };
+export async function submitSchoolId(schoolIdUrl: string) {
+  if (!schoolIdUrl || !schoolIdUrl.startsWith("http")) {
+    return { error: "Invalid school ID URL" };
   }
 
   const supabase = await createClient();
@@ -18,59 +15,34 @@ export async function submitNINVerification(input: KYCInput) {
     return { error: "You must be logged in" };
   }
 
-  const { nin } = result.data;
-
-  // Check if profile exists at all
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, nin_verified")
+    .select("id, school_id_status")
     .eq("id", user.id)
     .single();
 
-  if (profile?.nin_verified) {
-    return { error: "Your NIN is already verified" };
+  if (profile?.school_id_status === "approved") {
+    return { error: "Your school ID is already approved" };
   }
 
-  // Verify NIN with Prembly
-  try {
-    await verifyNIN(nin);
-  } catch (err: any) {
-    return { error: `NIN verification failed: ${err.message}` };
+  if (profile?.school_id_status === "pending") {
+    return { error: "Your school ID is already under review" };
   }
 
-  const ninPayload = {
-    nin_last4: nin.slice(-4),
-    nin_verified: true,
-    nin_verified_at: new Date().toISOString(),
-  };
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({
+      school_id_url: schoolIdUrl,
+      school_id_status: "pending",
+    })
+    .eq("id", user.id);
 
-  if (!profile) {
-    // Profile was never created (registration completed auth but failed profile insert).
-    // Create a minimal profile now so the user can proceed.
-    const { error: insertError } = await supabase.from("profiles").insert({
-      id: user.id,
-      full_name: user.email?.split("@")[0] ?? "User",
-      university: "Unknown",
-      ...ninPayload,
-    });
-
-    if (insertError) {
-      console.error("[kyc] profile insert error:", insertError);
-      return { error: "Could not create profile. Please re-register." };
-    }
-  } else {
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update(ninPayload)
-      .eq("id", user.id);
-
-    if (updateError) {
-      console.error("[kyc] update error:", updateError);
-      return { error: "Verified but failed to save status. Please try again." };
-    }
+  if (updateError) {
+    console.error("[kyc] update error:", updateError);
+    return { error: "Failed to submit. Please try again." };
   }
 
   revalidatePath("/sell");
-  revalidatePath("/", "layout");
+  revalidatePath("/kyc");
   return { success: true };
 }

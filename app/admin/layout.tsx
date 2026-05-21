@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/sidebar";
 
-export const metadata = { title: "CampSwap Admin" };
+export const metadata = { title: "KolejSwap Admin" };
 
 export default async function AdminLayout({
   children,
@@ -25,7 +25,7 @@ export default async function AdminLayout({
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--ut-bg)" }}>
       <AdminSidebar adminName={profile.full_name} />
-      <main style={{ flex: 1, overflow: "auto" }}>{children}</main>
+      <main className="ut-admin-main" style={{ flex: 1, overflow: "auto" }}>{children}</main>
     </div>
   );
 }
