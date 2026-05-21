@@ -22,11 +22,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  const categoryUrls: MetadataRoute.Sitemap = [
+    "textbooks", "electronics", "furniture", "clothing", "other",
+  ].map((cat) => ({
+    url: `${appUrl}/catalog?category=${cat}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
+    priority: 0.85,
+  }));
+
   return [
-    { url: appUrl,                    lastModified: new Date(), changeFrequency: "daily",  priority: 1.0 },
-    { url: `${appUrl}/catalog`,       lastModified: new Date(), changeFrequency: "hourly", priority: 0.9 },
-    { url: `${appUrl}/terms`,         lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
-    { url: `${appUrl}/privacy`,       lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
+    { url: appUrl,                           lastModified: new Date(), changeFrequency: "daily",  priority: 1.0 },
+    { url: `${appUrl}/catalog`,              lastModified: new Date(), changeFrequency: "hourly", priority: 0.9 },
+    { url: `${appUrl}/catalog?type=services`,lastModified: new Date(), changeFrequency: "daily",  priority: 0.85 },
+    ...categoryUrls,
+    { url: `${appUrl}/terms`,                lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
+    { url: `${appUrl}/privacy`,              lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
     ...productUrls,
   ];
 }

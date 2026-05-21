@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Search, Bell, Bookmark, MessageSquare, ChevronDown, Plus, LayoutGrid, Package, User, X } from "lucide-react";
+import { Search, Bell, Bookmark, MessageSquare, ChevronDown, Plus, LayoutGrid, Package, User, X, Menu } from "lucide-react";
 import { LOC_CACHE_KEY, LOC_CACHE_TTL, type CachedLocation } from "@/lib/hooks/use-location";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
 
@@ -75,8 +75,15 @@ export function Navbar() {
   const [pendingSwaps,  setPendingSwaps]  = useState(0);
   const [campusOpen,    setCampusOpen]    = useState(false);
   const [campusSearch,  setCampusSearch]  = useState("");
+  const [menuOpen,      setMenuOpen]      = useState(false);
   const inputRef  = useRef<HTMLInputElement>(null);
   const campusRef = useRef<HTMLDivElement>(null);
+
+  // ── Body scroll lock when mobile menu is open ──
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [menuOpen]);
 
   // ── Load preferred campus from localStorage (guests) ──
   useEffect(() => {
@@ -222,8 +229,11 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login"    className="ut-cta ut-cta-ghost"   style={{ fontSize: 13, padding: "8px 14px" }}>Sign in</Link>
-              <Link href="/register" className="ut-cta ut-cta-primary" style={{ fontSize: 13, padding: "8px 14px" }}>Join free</Link>
+              <Link href="/login"    className="ut-cta ut-cta-ghost ut-nav-guest-btn"   style={{ fontSize: 13, padding: "8px 14px" }}>Sign in</Link>
+              <Link href="/register" className="ut-cta ut-cta-primary ut-nav-guest-btn" style={{ fontSize: 13, padding: "8px 14px" }}>Join free</Link>
+              <button className="ut-hamburger" onClick={() => setMenuOpen(true)} aria-label="Open menu">
+                <Menu size={20} />
+              </button>
             </>
           )}
         </div>
@@ -335,6 +345,38 @@ export function Navbar() {
         </div>
       )}
     </header>
+
+    {menuOpen && (
+      <div className="ut-mobile-menu" role="dialog" aria-modal="true">
+        <div className="ut-mobile-menu-head">
+          <Link href="/" className="ut-logo" onClick={() => setMenuOpen(false)}>
+            <span className="ut-logo-mark">u</span>
+            <span>KolejSwap</span>
+          </Link>
+          <button className="ut-hamburger" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+            <X size={20} />
+          </button>
+        </div>
+        <nav className="ut-mobile-menu-nav">
+          <Link href="/catalog" className="ut-mobile-menu-link" onClick={() => setMenuOpen(false)}>
+            Browse listings
+          </Link>
+          <Link href="/login" className="ut-mobile-menu-link" onClick={() => setMenuOpen(false)}>
+            Sign in
+          </Link>
+        </nav>
+        <div className="ut-mobile-menu-foot">
+          <Link
+            href="/register"
+            className="ut-cta ut-cta-primary"
+            style={{ width: "100%", justifyContent: "center", padding: "14px 16px", fontSize: 15, borderRadius: 14 }}
+            onClick={() => setMenuOpen(false)}
+          >
+            Join free
+          </Link>
+        </div>
+      </div>
+    )}
 
     {/* Mobile bottom navigation — only shown on small screens via CSS */}
     {isLoggedIn && (

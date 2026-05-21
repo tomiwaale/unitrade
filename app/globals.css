@@ -1138,6 +1138,12 @@
   /* Landing page main: no bottom nav, so less bottom padding */
   .ut-landing-main { padding-bottom: 40px !important; }
 
+  /* Catalog nav guest: hide sign in/join free — hamburger handles them on mobile */
+  .ut-nav-guest-btn { display: none !important; }
+
+  /* Pin nav-actions to top-right grid cell so hamburger doesn't fall to row 3 */
+  .ut-nav-actions { grid-row: 1; grid-column: 2; }
+
   /* Landing nav: show hamburger, hide desktop actions */
   .ut-landing-nav-desktop { display: none !important; }
   .ut-hamburger { display: flex; }

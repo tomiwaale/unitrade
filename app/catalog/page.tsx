@@ -3,62 +3,118 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 
-const CATEGORY_META: Record<string, { title: string; description: string }> = {
+const CATEGORY_META: Record<string, { title: string; description: string; keywords: string[] }> = {
   textbooks: {
-    title: "Buy Second-Hand Textbooks at Nigerian Universities",
+    title: "Buy Second-Hand Textbooks at Nigerian Universities | KolejSwap",
     description:
-      "Find cheap used textbooks from students at UNILAG, UI, OAU, LASU, FUTA and more. Save money on course materials — buy directly from fellow students.",
+      "Find cheap used textbooks, course materials and study guides from students at UNILAG, UI, OAU, LASU, FUTA, UNIBEN, UNIPORT, ABU, UNN and 50+ Nigerian universities. Save money — buy directly from fellow students.",
+    keywords: [
+      "buy used textbooks Nigeria", "cheap textbooks university Nigeria",
+      "second hand textbooks UNILAG", "cheap course materials Nigeria",
+      "buy school books online Nigeria", "used textbooks UI Ibadan",
+      "affordable textbooks OAU", "secondhand books university Nigeria",
+      "student textbooks for sale Nigeria", "buy cheap study materials Nigeria",
+    ],
   },
   electronics: {
-    title: "Buy Cheap Laptops, Phones & Electronics from Nigerian Students",
+    title: "Buy Cheap Laptops, Phones & Electronics from Nigerian Students | KolejSwap",
     description:
-      "Student-priced laptops, smartphones, tablets and gadgets. Buy from verified students at Nigerian universities — safe, affordable, campus-to-campus.",
+      "Student-priced laptops, smartphones, tablets, earphones and gadgets. Buy from verified students at UNILAG, OAU, UI, FUTA, ABU and 50+ Nigerian universities — safe escrow, affordable prices.",
+    keywords: [
+      "buy cheap laptop student Nigeria", "second hand laptop student Nigeria",
+      "buy used phone student Nigeria", "cheap electronics university Nigeria",
+      "affordable laptop UNILAG student", "buy used Samsung iPhone Nigeria student",
+      "student gadgets for sale Nigeria", "Tecno laptop buy Nigeria student",
+      "HP Dell laptop student Nigeria", "cheap Android phone student Nigeria",
+    ],
   },
   furniture: {
-    title: "Buy Cheap Hostel Furniture & Room Items in Nigeria",
+    title: "Buy Cheap Hostel Furniture & Room Items at Nigerian Universities | KolejSwap",
     description:
-      "Hostel beds, mattresses, shelves, fans, buckets and room essentials at student prices. Buy from graduating students clearing out their rooms across Nigerian campuses.",
+      "Hostel beds, mattresses, shelves, fans, buckets, cooking pots and room essentials at student prices. Buy from graduating students across UNILAG, OAU, UI, ABU, FUTA and 50+ Nigerian campuses.",
+    keywords: [
+      "buy hostel furniture Nigeria", "hostel room items for sale Nigeria",
+      "cheap hostel bed mattress Nigeria", "student room furniture Nigeria",
+      "sell hostel items graduating student Nigeria", "buy fan cooler student Nigeria",
+      "hostel shelf shelves Nigeria", "cheap hostel bucket pots Nigeria",
+      "buy used hostel items UNILAG", "student room essentials Nigeria",
+    ],
   },
   clothing: {
-    title: "Buy Affordable Campus Fashion & Clothing from Nigerian Students",
+    title: "Buy Affordable Campus Fashion & Clothing from Nigerian Students | KolejSwap",
     description:
-      "Student fashion, school uniforms, and affordable clothing. Shop from fellow students on Nigerian campuses.",
+      "Affordable student fashion, school wears, casual clothing and accessories from fellow Nigerian university students. Shop from UNILAG, OAU, UI, FUTA and 50+ campuses.",
+    keywords: [
+      "buy cheap clothing student Nigeria", "student fashion Nigeria campus",
+      "school wear for sale Nigeria", "affordable clothing university Nigeria",
+      "buy used clothes student Nigeria", "campus fashion buy sell Nigeria",
+      "thrift clothing Nigerian student", "student accessories for sale Nigeria",
+    ],
   },
   other: {
-    title: "Buy Miscellaneous Campus Items from Nigerian Students",
+    title: "Buy Miscellaneous Campus Items from Nigerian Students | KolejSwap",
     description:
-      "Find everything else students sell on campus — musical instruments, sports gear, accessories and more.",
+      "Find everything else students sell on campus — musical instruments, sports gear, cooking utensils, stationery, accessories and more at Nigerian universities.",
+    keywords: [
+      "miscellaneous student items Nigeria", "campus items for sale Nigeria",
+      "buy student items online Nigeria", "university campus items Nigeria",
+      "sports gear student Nigeria", "musical instruments student Nigeria",
+      "cooking utensils student Nigeria", "stationery buy sell Nigeria campus",
+    ],
   },
   services: {
-    title: "Student Services — Tutoring, Tech Help & More at Nigerian Universities",
+    title: "Student Services — Tutoring, Tech Help & More at Nigerian Universities | KolejSwap",
     description:
-      "Hire student tutors, photographers, designers, and delivery riders on your campus. Browse services offered by verified Nigerian university students.",
+      "Hire student tutors, tech helpers, photographers, graphic designers, and delivery riders on your campus. Browse services offered by verified Nigerian university students at UNILAG, OAU, UI, FUTA, ABU and more.",
+    keywords: [
+      "student tutor Nigeria", "hire student Nigeria campus",
+      "student photographer Nigeria", "campus delivery service Nigeria",
+      "student graphic designer Nigeria", "student tech help Nigeria",
+      "hire student freelancer Nigeria", "campus food delivery Nigeria",
+      "affordable tutoring UNILAG", "student services university Nigeria",
+    ],
   },
 };
+
+const APP_URL =
+  process.env.APP_URL?.startsWith("http")
+    ? process.env.APP_URL
+    : "https://kolejswap.com";
 
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
-  const params  = await searchParams;
-  const cat     = params.category as string | undefined;
+  const params     = await searchParams;
+  const cat        = params.category as string | undefined;
   const isServices = params.type === "services";
-  const key     = isServices ? "services" : (cat ?? "all");
-  const meta    = CATEGORY_META[key];
+  const key        = isServices ? "services" : (cat ?? "all");
+  const meta       = CATEGORY_META[key];
 
   if (meta) {
+    const canonical = isServices
+      ? `${APP_URL}/catalog?type=services`
+      : `${APP_URL}/catalog?category=${cat}`;
     return {
       title: meta.title,
       description: meta.description,
+      keywords: meta.keywords,
+      alternates: { canonical },
       openGraph: { title: meta.title, description: meta.description },
     };
   }
 
   return {
-    title: "Buy & Sell Campus Items at Nigerian Universities",
+    title: "Buy & Sell Campus Items at Nigerian Universities | KolejSwap",
     description:
-      "Browse thousands of listings from verified Nigerian university students. Textbooks, electronics, hostel furniture, clothing, services and more — all with escrow protection.",
+      "Browse thousands of listings from verified Nigerian university students. Textbooks, electronics, hostel furniture, clothing, services and more — all with safe escrow protection.",
+    keywords: [
+      "student marketplace Nigeria", "buy sell campus Nigeria",
+      "cheap items university Nigeria", "buy school items Nigeria",
+      "student items for sale Nigeria", "campus market Nigeria",
+    ],
+    alternates: { canonical: `${APP_URL}/catalog` },
     openGraph: {
       title: "Campus Marketplace Nigeria — KolejSwap",
       description:

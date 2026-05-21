@@ -8,11 +8,22 @@ import { LandingNav } from "@/components/landing-nav";
 export const metadata: Metadata = {
   title: "KolejSwap — Buy, Sell & Swap at Nigerian Universities",
   description:
-    "Nigeria's student marketplace. Buy cheap hostel items, second-hand textbooks, laptops and electronics from verified students. Secure escrow payments. Free to join.",
+    "Nigeria's #1 student marketplace. Buy cheap hostel items, second-hand textbooks, laptops and electronics from verified students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT, ABU and 50+ universities. Secure escrow payments. Free to join.",
+  keywords: [
+    "student marketplace Nigeria",
+    "buy sell campus Nigeria",
+    "cheap textbooks Nigerian students",
+    "buy hostel items Nigeria",
+    "student to student Nigeria",
+    "UNILAG buy sell", "OAU student market", "UI Ibadan marketplace",
+    "LASU student items", "FUTA campus buy sell", "ABU student marketplace",
+    "buy cheap laptop Nigeria student", "sell hostel furniture Nigeria",
+    "Nigeria university marketplace", "campus swap Nigeria",
+  ],
   openGraph: {
-    title: "KolejSwap — Buy, Sell & Swap at Nigerian Universities",
+    title: "KolejSwap — Nigeria's Student Marketplace",
     description:
-      "Buy hostel furniture, textbooks, electronics and more from students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ campuses across Nigeria.",
+      "Buy hostel furniture, textbooks, electronics and more from verified students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ campuses across Nigeria. Safe escrow payments.",
     type: "website",
   },
 };

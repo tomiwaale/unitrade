@@ -58,17 +58,33 @@ export async function generateMetadata(
 
   if (!product) return { title: "Listing not found · KolejSwap" };
 
-  const title       = `${product.title} — ₦${Number(product.price).toLocaleString()} · KolejSwap`;
-  const description = `${product.description?.slice(0, 140) ?? ""}${product.description?.length > 140 ? "…" : ""}`;
-  const image       = product.images?.[0];
   const appUrl =
     process.env.APP_URL?.startsWith("http")
       ? process.env.APP_URL
       : "https://kolejswap.com";
 
+  const university  = (product.profiles as { university?: string } | null)?.university ?? "";
+  const uniSuffix   = university ? ` · ${university}` : "";
+  const title       = `${product.title} — ₦${Number(product.price).toLocaleString()}${uniSuffix} | KolejSwap`;
+  const baseDesc    = product.description?.slice(0, 120) ?? "";
+  const ellipsis    = (product.description?.length ?? 0) > 120 ? "…" : "";
+  const description = `${baseDesc}${ellipsis}${university ? ` Listed by a student at ${university}.` : ""} Buy safely with escrow on KolejSwap.`;
+  const image       = product.images?.[0];
+  const catLabel    = CAT_LABELS[product.category] ?? product.category ?? "Items";
+
   return {
     title,
     description,
+    keywords: [
+      `buy ${product.title} Nigeria`,
+      `${product.title} for sale Nigeria`,
+      `cheap ${catLabel.toLowerCase()} Nigeria`,
+      `student ${catLabel.toLowerCase()} Nigeria`,
+      university ? `buy ${catLabel.toLowerCase()} ${university}` : "",
+      "student marketplace Nigeria",
+      "buy campus items Nigeria",
+    ].filter(Boolean),
+    alternates: { canonical: `${appUrl}/product/${id}` },
     openGraph: {
       title,
       description,
@@ -201,11 +217,26 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       : {}),
   };
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home",   item: appUrl },
+      { "@type": "ListItem", position: 2, name: "Browse", item: `${appUrl}/catalog` },
+      { "@type": "ListItem", position: 3, name: catLabel, item: `${appUrl}/catalog?category=${product.category}` },
+      { "@type": "ListItem", position: 4, name: product.title, item: `${appUrl}/product/${product.id}` },
+    ],
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
     <div className="ut-app">
       <Navbar />
