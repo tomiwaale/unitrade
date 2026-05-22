@@ -2,7 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendAdminEmail } from "@/lib/email";
+import { sendAdminEmail, sendUserEmail, emailDisputeFiled } from "@/lib/email";
+import { notify } from "@/lib/notifications";
 
 export async function disputeOrder(orderId: string) {
   const supabase = await createClient();
@@ -12,7 +13,7 @@ export async function disputeOrder(orderId: string) {
 
   const { data: order, error } = await supabase
     .from("orders")
-    .select("id, buyer_id, status, auto_release_at")
+    .select("id, buyer_id, status, auto_release_at, products(title, seller_id)")
     .eq("id", orderId)
     .single();
 
@@ -29,7 +30,20 @@ export async function disputeOrder(orderId: string) {
     })
     .eq("id", orderId);
 
+  const productTitle = (order as any).products?.title ?? "your item";
+  const sellerId = (order as any).products?.seller_id as string | undefined;
   const adminUrl = `${process.env.APP_URL}/admin/disputes`;
+
+  if (sellerId) {
+    void notify(
+      sellerId,
+      "order",
+      "Dispute filed on your order",
+      `A buyer has raised a dispute on "${productTitle}". An admin will review it shortly.`,
+      orderId,
+    );
+  }
+
   await sendAdminEmail(
     `Dispute filed — Order ${orderId.slice(0, 8).toUpperCase()}`,
     `
@@ -41,6 +55,23 @@ export async function disputeOrder(orderId: string) {
       </a></p>
     `
   );
+
+  // Email buyer confirming dispute was received
+  void (async () => {
+    try {
+      const { data: buyerAuth } = await admin.auth.admin.getUserById(user.id);
+      if (buyerAuth.user?.email) {
+        const { subject, html } = emailDisputeFiled({
+          buyerName: buyerAuth.user.user_metadata?.full_name ?? "there",
+          productTitle,
+          orderId,
+        });
+        await sendUserEmail(buyerAuth.user.email, subject, html);
+      }
+    } catch (err) {
+      console.error("[email] Failed to send dispute email to buyer:", err);
+    }
+  })();
 
   return { success: true };
 }

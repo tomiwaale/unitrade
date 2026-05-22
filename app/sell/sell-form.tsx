@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect, useRef } from "react";
 import { createProduct } from "@/app/actions/product";
 import { toast } from "sonner";
-import { Check, MapPin, ArrowLeftRight, Shield, Star } from "lucide-react";
+import { Check, MapPin, ArrowLeftRight, Shield, FileText, X } from "lucide-react";
 import ImageUploader from "@/components/image-uploader";
 
 const CATEGORIES = [
@@ -36,6 +36,44 @@ interface Props {
   sellerName: string;
 }
 
+// ── Draft persistence ─────────────────────────────────────────────────────────
+
+const DRAFT_KEY = "ut_sell_draft";
+
+type DraftData = {
+  title: string;
+  price: string;
+  category: string;
+  condition: string;
+  openTo: string;
+  location: string;
+  description: string;
+  imageUrls: string[];
+};
+
+function readDraft(): DraftData | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as DraftData) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(data: DraftData) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  } catch {}
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function SellForm({ defaultLocation, sellerName }: Props) {
   const [isPending, startTransition] = useTransition();
   const [category, setCategory] = useState("");
@@ -44,7 +82,43 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [location, setLocation] = useState(defaultLocation);
-  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [draftRestored, setDraftRestored] = useState(false);
+  // Separate state to pass as defaultValues to ImageUploader; changing imgKey remounts it
+  const [draftImageUrls, setDraftImageUrls] = useState<string[]>([]);
+  const [imgKey, setImgKey] = useState(0);
+
+  // Restore draft on mount
+  useEffect(() => {
+    const draft = readDraft();
+    if (!draft) return;
+    if (draft.title) setTitle(draft.title);
+    if (draft.price) setPrice(draft.price);
+    if (draft.category) setCategory(draft.category);
+    if (draft.condition) setCondition(draft.condition);
+    if (draft.openTo) setOpenTo(draft.openTo as OpenTo);
+    if (draft.location) setLocation(draft.location);
+    if (draft.description) setDescription(draft.description);
+    if (draft.imageUrls?.length) {
+      setDraftImageUrls(draft.imageUrls);
+      setImgKey((k) => k + 1); // remount ImageUploader so defaultValues takes effect
+    }
+    setDraftRestored(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save on change (debounced 800 ms) — only when form has some content
+  const autoSaveTimer = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    clearTimeout(autoSaveTimer.current);
+    if (!title && !price && !category && !description) return;
+    autoSaveTimer.current = window.setTimeout(() => {
+      writeDraft({ title, price, category, condition, openTo, location, description, imageUrls });
+    }, 800);
+    return () => clearTimeout(autoSaveTimer.current);
+  }, [title, price, category, condition, openTo, location, description, imageUrls]);
+
+  const previewImageUrl = imageUrls[0] ?? "";
 
   const initials = sellerName
     .split(" ")
@@ -60,8 +134,23 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
 
   const showSwap = openTo !== "cash-only";
 
-  function handleImagesChange(urls: string[]) {
-    setPreviewImageUrl(urls[0] ?? "");
+  function handleSaveDraft() {
+    writeDraft({ title, price, category, condition, openTo, location, description, imageUrls });
+    toast.success("Draft saved — come back any time to finish your listing");
+  }
+
+  function handleDiscardDraft() {
+    clearDraft();
+    setTitle("");
+    setPrice("");
+    setCategory("");
+    setCondition("good");
+    setOpenTo("cash-or-swap");
+    setLocation(defaultLocation);
+    setDescription("");
+    setDraftImageUrls([]);
+    setImgKey((k) => k + 1);
+    setDraftRestored(false);
   }
 
   async function action(formData: FormData) {
@@ -70,6 +159,7 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
       if (result?.error) {
         toast.error(result.error);
       } else {
+        clearDraft();
         toast.success("Listing published!");
       }
     });
@@ -84,6 +174,32 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
         </div>
       </div>
 
+      {/* Draft restored banner */}
+      {draftRestored && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 14px", marginBottom: 20,
+          background: "var(--ut-primary-tint)",
+          border: "1px solid color-mix(in srgb, var(--ut-primary) 25%, transparent)",
+          borderRadius: "var(--ut-radius)", fontSize: 13.5,
+          color: "var(--ut-primary-ink)",
+        }}>
+          <FileText size={15} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>Draft restored — pick up where you left off.</span>
+          <button
+            type="button"
+            onClick={handleDiscardDraft}
+            title="Discard draft"
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--ut-primary-ink)", opacity: 0.6, padding: 2, display: "flex",
+            }}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       <div className="ut-sell-layout">
         {/* ── Form ── */}
         <form action={action}>
@@ -94,7 +210,12 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
           <div className="ut-form-grid">
             {/* Photo upload */}
             <div className="ut-form-field full">
-              <ImageUploader max={6} onChange={handleImagesChange} />
+              <ImageUploader
+                key={imgKey}
+                max={6}
+                defaultValues={draftImageUrls}
+                onChange={setImageUrls}
+              />
             </div>
 
             {/* Title */}
@@ -182,6 +303,8 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
                 className="ut-textarea"
                 placeholder="Condition, edition, accessories, meetup preferences…"
                 required
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
@@ -201,7 +324,12 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
-            <button type="button" className="ut-cta ut-cta-ghost" style={{ fontSize: 13 }}>
+            <button
+              type="button"
+              className="ut-cta ut-cta-ghost"
+              style={{ fontSize: 13 }}
+              onClick={handleSaveDraft}
+            >
               Save as draft
             </button>
             <button
@@ -251,12 +379,8 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
                   <span className="ut-avatar">{initials}</span>
                   <span style={{ fontSize: 13, fontWeight: 500 }}>{displayName}</span>
                 </div>
-                <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <Star size={11} style={{ color: "var(--ut-yellow)", fill: "var(--ut-yellow)" }} />
-                  <span style={{ fontSize: 12, fontFamily: "var(--ut-font-mono)", color: "var(--ut-ink-soft)" }}>4.8</span>
-                </span>
+                <span style={{ fontSize: 11, color: "var(--ut-ink-mute)" }}>Preview</span>
               </div>
-              {/* Condition + deal type preview */}
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "5px 0 8px" }}>
                 {(() => {
                   const COND_COLOR: Record<string, string> = { "new": "#16803c", "like-new": "#15803d", "good": "#1d4ed8", "fair": "#b45309", "poor": "#b91c1c" };

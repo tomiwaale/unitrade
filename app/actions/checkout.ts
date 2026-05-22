@@ -14,7 +14,7 @@ export async function createCheckoutSession(productId: string) {
 
   const { data: product, error } = await supabase
     .from("products")
-    .select("*, profiles(full_name)")
+    .select("*, profiles(full_name, subaccount_code)")
     .eq("id", productId)
     .single();
 
@@ -28,6 +28,11 @@ export async function createCheckoutSession(productId: string) {
 
   if (product.status !== "active") {
     return { error: "This item is no longer available" };
+  }
+
+  const sellerSubaccountCode = (product.profiles as any)?.subaccount_code as string | null;
+  if (!sellerSubaccountCode) {
+    return { error: "Seller has not completed payout setup. Purchase is unavailable." };
   }
 
   const reference = `ORD-${Date.now()}-${productId.slice(0, 5)}`;
@@ -46,8 +51,9 @@ export async function createCheckoutSession(productId: string) {
     return { error: "Failed to create order. Please try again." };
   }
 
-  // No subaccount — full amount lands in KolejSwap's Paystack balance for escrow.
-  // Seller is paid via Paystack Transfer after buyer confirms receipt.
+  // Split payment: 90% goes to seller's subaccount, 10% stays with KolejSwap.
+  // KolejSwap bears the Paystack fee (comes from our 10% cut).
+  // Seller's funds are settled when buyer confirms receipt via settleSubaccount().
   let checkoutUrl: string;
   try {
     const session = await initializeTransaction({
@@ -55,6 +61,8 @@ export async function createCheckoutSession(productId: string) {
       amount: amountInKobo,
       reference,
       callback_url: `${process.env.APP_URL}/api/paystack/callback`,
+      subaccount: sellerSubaccountCode,
+      bearer: "account",
     });
     checkoutUrl = session.authorization_url;
   } catch (err: any) {

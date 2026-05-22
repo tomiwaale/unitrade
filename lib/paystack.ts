@@ -1,8 +1,33 @@
+export interface PaystackBank {
+  name: string;
+  code: string;
+}
+
+export async function fetchBanks(): Promise<PaystackBank[]> {
+  const response = await fetch(
+    "https://api.paystack.co/bank?currency=NGN&perPage=100&use_cursor=false",
+    { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` }, next: { revalidate: 86400 } }
+  );
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.message || "Failed to fetch banks");
+  }
+
+  const seen = new Set<string>();
+  return (body.data as PaystackBank[]).reduce<PaystackBank[]>((acc, { name, code }) => {
+    if (!seen.has(code)) { seen.add(code); acc.push({ name, code }); }
+    return acc;
+  }, []);
+}
+
 export interface PaystackTransactionInitialize {
   email: string;
   amount: number; // in kobo (NGN * 100)
   reference?: string;
   callback_url?: string;
+  subaccount?: string; // seller's subaccount_code for split payments
+  bearer?: "account" | "subaccount"; // who bears Paystack fees
 }
 
 export async function initializeTransaction(data: PaystackTransactionInitialize) {
@@ -106,31 +131,52 @@ export async function refundTransaction(reference: string) {
   return body.data;
 }
 
-// Send seller their 90% cut after buyer confirms receipt.
-// amountInKobo should already be 90% of the order amount.
-export async function transferToSeller(
-  recipientCode: string,
-  amountInKobo: number,
-  reference: string
-) {
-  const response = await fetch("https://api.paystack.co/transfer", {
+// Register a seller's bank account as a Paystack subaccount for split payments.
+// percentage_charge is the seller's cut (e.g. 90 = seller keeps 90%).
+// settlement_schedule "manual" means funds sit in the subaccount until we trigger settlement.
+export async function createSubaccount(
+  businessName: string,
+  accountNumber: string,
+  bankCode: string,
+  percentageCharge = 90
+): Promise<string> {
+  const response = await fetch("https://api.paystack.co/subaccount", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      source: "balance",
-      recipient: recipientCode,
-      amount: amountInKobo,
-      reference,
-      reason: "KolejSwap order payout",
+      business_name: businessName,
+      settlement_bank: bankCode,
+      account_number: accountNumber,
+      percentage_charge: percentageCharge,
+      settlement_schedule: "manual",
     }),
   });
 
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(body.message || "Failed to transfer funds to seller");
+    throw new Error(body.message || "Failed to create subaccount");
+  }
+
+  return body.data.subaccount_code as string;
+}
+
+// Trigger immediate settlement for a seller's subaccount after buyer confirms receipt.
+export async function settleSubaccount(subaccountCode: string) {
+  const response = await fetch("https://api.paystack.co/subaccount/settle", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ subaccount: subaccountCode }),
+  });
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.message || "Failed to trigger seller settlement");
   }
 
   return body.data;

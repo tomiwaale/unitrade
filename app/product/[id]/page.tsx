@@ -115,7 +115,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   if (error || !product) notFound();
 
-  // Deal count for this seller
+  // Deal count + seller rating
   const { data: sellerProductIds } = await supabase
     .from("products")
     .select("id")
@@ -131,6 +131,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       .in("status", ["confirmed", "released"]);
     dealCount = count ?? 0;
   }
+
+  const { data: sellerReviews } = await supabase
+    .from("reviews")
+    .select("rating")
+    .eq("seller_id", product.seller_id);
+  const sellerRating = sellerReviews && sellerReviews.length > 0
+    ? (sellerReviews.reduce((s: number, r: any) => s + r.rating, 0) / sellerReviews.length).toFixed(1)
+    : null;
 
   // Unread messages + wishlist state — only needed when logged in
   let unreadCount = 0;
@@ -354,10 +362,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 </span>
               </div>
               <div className="ut-seller-stat" style={{ textAlign: "right" }}>
-                <b style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
-                  <Star size={12} style={{ color: "var(--ut-yellow)", fill: "var(--ut-yellow)" }} />
-                  4.7
-                </b>
+                {sellerRating ? (
+                  <b style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                    <Star size={12} style={{ color: "var(--ut-yellow)", fill: "var(--ut-yellow)" }} />
+                    {sellerRating}
+                  </b>
+                ) : (
+                  <b style={{ fontSize: 12, color: "var(--ut-ink-mute)", fontWeight: 500 }}>No reviews</b>
+                )}
                 <span>{dealCount} deal{dealCount !== 1 ? "s" : ""}</span>
               </div>
             </div>

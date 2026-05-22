@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import Link from "next/link";
 import DisputeActions from "@/components/admin/dispute-actions";
 
 export default async function AdminDisputesPage() {
@@ -77,6 +78,17 @@ export default async function AdminDisputesPage() {
                   <p style={{ fontSize: 12, color: "var(--ut-ink-mute)", flex: 1 }}>
                     Seller payout: ₦{Math.round(Number(order.amount) * 0.9).toLocaleString()} (90%)
                   </p>
+                  <Link
+                    href={`/admin/disputes/${order.id}`}
+                    style={{
+                      fontSize: 12, fontWeight: 600, color: "var(--ut-primary-ink)",
+                      background: "var(--ut-primary-tint)", padding: "5px 12px",
+                      borderRadius: 8, textDecoration: "none",
+                      border: "1px solid color-mix(in srgb, var(--ut-primary) 25%, transparent)",
+                    }}
+                  >
+                    View
+                  </Link>
                   <DisputeActions orderId={order.id} hasPayout={hasPayout} />
                 </div>
               </div>

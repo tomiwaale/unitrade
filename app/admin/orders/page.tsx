@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
+import { ConfirmPaymentForm } from "./confirm-payment-form";
 
 const STATUS_COLORS: Record<string, { text: string; bg: string }> = {
   pending:   { text: "var(--ut-ink-soft)",    bg: "var(--ut-bg-sunken)" },
@@ -40,6 +41,8 @@ export default async function AdminOrdersPage({
       <p style={{ fontSize: 14, color: "var(--ut-ink-mute)", marginBottom: 24 }}>
         {orders?.length ?? 0} order{orders?.length !== 1 ? "s" : ""} found
       </p>
+
+      <ConfirmPaymentForm />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
         {STATUSES.map((s) => {

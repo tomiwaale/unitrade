@@ -18,6 +18,7 @@ export const registerSchema = z.object({
 
 export const payoutSchema = z.object({
   bankCode: z.string().min(1, "Settlement bank is required"),
+  bankName: z.string().min(1, "Settlement bank is required"),
   accountNumber: z.string().length(10, "Account number must be 10 digits"),
 });
 

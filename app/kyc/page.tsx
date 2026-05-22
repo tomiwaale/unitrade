@@ -42,6 +42,10 @@ export default function KYCPage() {
       toast.error("Please upload an image file");
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File is too large. Maximum size is 10 MB.");
+      return;
+    }
     setPreview(URL.createObjectURL(file));
     setUploading(true);
 

@@ -3,6 +3,7 @@ import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import SupportButton from "@/components/ui/support-button";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -245,6 +246,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen antialiased flex flex-col" suppressHydrationWarning>
         {children}
+        <SupportButton />
         <Toaster position="bottom-center" />
       </body>
     </html>

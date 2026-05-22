@@ -5,6 +5,7 @@ import { Navbar } from "@/components/ui/navbar";
 import { CheckCircle2, MapPin, ArrowRight, Package, Star, Landmark } from "lucide-react";
 import LocationDisplay from "@/components/ui/location-display";
 import PayoutSetupCard from "./payout-setup";
+import ProfileEdit from "./profile-edit";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -41,7 +42,7 @@ export default async function ProfilePage() {
   // ─── Profile ───────────────────────────────────────
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, university, created_at, recipient_code, nin_verified, bank_name, account_name, school_id_status")
+    .select("full_name, university, phone, created_at, recipient_code, nin_verified, bank_name, account_name, account_number, school_id_status")
     .eq("id", user.id)
     .single();
 
@@ -91,6 +92,17 @@ export default async function ProfilePage() {
 
   const dealCount = (buyerOrders ?? []).filter(o => o.status === "confirmed").length
     + sellerOrders.filter(o => o.status === "confirmed").length;
+
+  // ─── Seller rating ──────────────────────────────────
+  const { data: reviewData } = await supabase
+    .from("reviews")
+    .select("rating")
+    .eq("seller_id", user.id);
+
+  const reviews = reviewData ?? [];
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+    : null;
 
   // Merge + sort deal history
   const allDeals = [
@@ -165,6 +177,13 @@ export default async function ProfilePage() {
               {profile.university} · joined {joinDate}
             </p>
             <LocationDisplay />
+            <div style={{ marginTop: 10 }}>
+              <ProfileEdit
+                fullName={profile.full_name ?? ""}
+                phone={profile.phone ?? ""}
+                university={profile.university ?? ""}
+              />
+            </div>
           </div>
 
           {/* Stats */}
@@ -179,10 +198,11 @@ export default async function ProfilePage() {
             </div>
             <div style={{ textAlign: "right" }}>
               <p style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 800, color: "var(--ut-ink)", fontFamily: "var(--ut-font-mono)", lineHeight: 1, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
-                <Star size={16} style={{ color: "var(--ut-accent)", fill: "var(--ut-accent)" }} /> —
+                <Star size={16} style={{ color: "var(--ut-accent)", fill: avgRating ? "var(--ut-accent)" : "none" }} />
+                {avgRating ?? "—"}
               </p>
               <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "var(--ut-ink-mute)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                Rating
+                {reviews.length > 0 ? `${reviews.length} review${reviews.length !== 1 ? "s" : ""}` : "Rating"}
               </p>
             </div>
             {profile.recipient_code && (
@@ -211,6 +231,7 @@ export default async function ProfilePage() {
           <PayoutSetupCard
             existingBank={profile.bank_name ?? null}
             existingAccountName={profile.account_name ?? null}
+            existingAccountNumber={profile.account_number ?? null}
           />
         </div>
 
@@ -392,6 +413,9 @@ export default async function ProfilePage() {
           </Link>
           <Link href="/orders" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "9px 16px" }}>
             All orders
+          </Link>
+          <Link href="/support" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "9px 16px" }}>
+            Contact Support
           </Link>
         </div>
 

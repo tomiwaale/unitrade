@@ -67,7 +67,15 @@ export default function LoginPage() {
 
               {/* Password */}
               <div>
-                <label className="ut-field-label">Password</label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <label className="ut-field-label">Password</label>
+                  <Link
+                    href="/forgot-password"
+                    style={{ fontSize: 12, color: "var(--ut-ink-soft)", textDecoration: "none" }}
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <div style={{ position: "relative" }}>
                   <Lock size={15} style={{
                     position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",

@@ -5,13 +5,15 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, ShoppingBag, AlertTriangle,
-  Users, Package, ArrowLeft, Images, Menu, X,
+  Users, Package, ArrowLeft, Images, Menu, X, GraduationCap, MessageCircle,
 } from "lucide-react";
 
 const NAV = [
   { href: "/admin",          label: "Overview",    icon: LayoutDashboard, exact: true  },
   { href: "/admin/orders",   label: "Orders",      icon: ShoppingBag,     exact: false },
   { href: "/admin/disputes", label: "Disputes",    icon: AlertTriangle,   exact: false },
+  { href: "/admin/kyc",      label: "KYC Queue",   icon: GraduationCap,   exact: false },
+  { href: "/admin/support",  label: "Support",     icon: MessageCircle,   exact: false },
   { href: "/admin/users",    label: "Users",       icon: Users,           exact: false },
   { href: "/admin/products", label: "Products",    icon: Package,         exact: false },
   { href: "/admin/slides",   label: "Hero Slides", icon: Images,          exact: false },

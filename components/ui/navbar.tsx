@@ -14,6 +14,7 @@ const TABS = [
   { id: "messages", label: "Messages", href: "/messages" },
   { id: "swaps",    label: "Swaps",    href: "/swaps"    },
   { id: "orders",   label: "Orders",   href: "/orders"   },
+  { id: "support",  label: "Support",  href: "/support"  },
   { id: "profile",  label: "Profile",  href: "/profile"  },
 ];
 
@@ -23,6 +24,7 @@ function getActiveTab(path: string) {
   if (path.startsWith("/messages"))  return "messages";
   if (path.startsWith("/swaps"))     return "swaps";
   if (path.startsWith("/orders"))    return "orders";
+  if (path.startsWith("/support"))  return "support";
   if (path.startsWith("/profile") || path.startsWith("/kyc") || path.startsWith("/listings")) return "profile";
   return null;
 }
@@ -72,12 +74,14 @@ export function Navbar() {
   const [university,    setUniversity]    = useState("Your Campus");
   const [location,      setLocation]      = useState<CachedLocation | null>(null);
   const [unreadCount,   setUnreadCount]   = useState(0);
+  const [unreadNotifs,  setUnreadNotifs]  = useState(0);
   const [pendingSwaps,  setPendingSwaps]  = useState(0);
   const [campusOpen,    setCampusOpen]    = useState(false);
   const [campusSearch,  setCampusSearch]  = useState("");
   const [menuOpen,      setMenuOpen]      = useState(false);
-  const inputRef  = useRef<HTMLInputElement>(null);
-  const campusRef = useRef<HTMLDivElement>(null);
+  const inputRef       = useRef<HTMLInputElement>(null);
+  const campusRef      = useRef<HTMLDivElement>(null);
+  const notifChannelRef = useRef<any>(null);
 
   // ── Body scroll lock when mobile menu is open ──
   useEffect(() => {
@@ -96,6 +100,7 @@ export function Navbar() {
   // ── Auth + profile ───────────────────────────────
   useEffect(() => {
     const supabase = createClient();
+
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session?.user) return;
       setIsLoggedIn(true);
@@ -124,6 +129,14 @@ export function Navbar() {
         if (count) setUnreadCount(count);
       }
 
+      // Unread notifications
+      const { count: notifCount } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", uid)
+        .eq("read", false);
+      if (notifCount) setUnreadNotifs(notifCount);
+
       // Pending swap offers received
       const { count: swapCount } = await supabase
         .from("swap_offers")
@@ -131,7 +144,25 @@ export function Navbar() {
         .eq("seller_id", uid)
         .eq("status", "pending");
       if (swapCount) setPendingSwaps(swapCount);
+
+      // Realtime: increment badge when a new notification arrives.
+      // Unique channel name prevents Strict Mode's double-invoke from reusing
+      // an already-subscribed channel and throwing after subscribe().
+      notifChannelRef.current = supabase
+        .channel(`notifs:${uid}:${Date.now()}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
+          () => setUnreadNotifs((n) => n + 1),
+        )
+        .subscribe();
     });
+
+    return () => {
+      if (notifChannelRef.current) {
+        supabase.removeChannel(notifChannelRef.current);
+      }
+    };
   }, []);
 
   // ── Geolocation ──────────────────────────────────
@@ -182,7 +213,7 @@ export function Navbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  function handleSearch(e: React.FormEvent) {
+  function handleSearch(e: React.SyntheticEvent) {
     e.preventDefault();
     if (query.trim()) router.push(`/catalog?q=${encodeURIComponent(query.trim())}`);
   }
@@ -213,11 +244,10 @@ export function Navbar() {
               <Link href="/listings" className="ut-nav-btn ut-nav-btn-desktop" aria-label="My listings">
                 <Bookmark size={17} />
               </Link>
-              <button className="ut-nav-btn ut-nav-btn-desktop" aria-label="Notifications"
-                style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <Link href="/notifications" className="ut-nav-btn ut-nav-btn-desktop" aria-label="Notifications" style={{ position: "relative" }}>
                 <Bell size={17} />
-                <span className="ut-dot" />
-              </button>
+                {unreadNotifs > 0 && <span className="ut-dot" />}
+              </Link>
               <Link href="/messages" className="ut-nav-btn ut-nav-btn-desktop" aria-label="Messages" style={{ position: "relative" }}>
                 <MessageSquare size={17} />
                 {unreadCount > 0 && <span className="ut-dot" />}

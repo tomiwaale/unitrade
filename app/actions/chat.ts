@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { redirect } from "next/navigation";
+import { notify } from "@/lib/notifications";
 
 export async function openConversation(
   productId: string,
@@ -57,11 +59,27 @@ export async function openConversation(
 export async function sendMessage(conversationId: string, content: string) {
   const trimmed = content.trim();
   if (!trimmed) return { error: "Message cannot be empty." };
+  if (trimmed.length > 2000) return { error: "Message must be under 2000 characters." };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return { error: "Not authenticated." };
+
+  if (!rateLimit(`msg:${user.id}`, 30, 60_000)) {
+    return { error: "Sending too fast. Slow down a little." };
+  }
+
+  // Verify the user is actually a participant — don't rely solely on RLS
+  const { data: conv } = await supabase
+    .from("conversations")
+    .select("buyer_id, seller_id, products(title)")
+    .eq("id", conversationId)
+    .single();
+
+  if (!conv || (user.id !== conv.buyer_id && user.id !== conv.seller_id)) {
+    return { error: "You are not a participant in this conversation." };
+  }
 
   const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
@@ -70,5 +88,16 @@ export async function sendMessage(conversationId: string, content: string) {
   });
 
   if (error) return { error: "Failed to send message." };
+
+  const recipientId = user.id === conv.buyer_id ? conv.seller_id : conv.buyer_id;
+  const productTitle = (conv as any).products?.title as string | undefined;
+  void notify(
+    recipientId,
+    "message",
+    "New message",
+    productTitle ? `About "${productTitle}"` : undefined,
+    conversationId,
+  );
+
   return { success: true };
 }

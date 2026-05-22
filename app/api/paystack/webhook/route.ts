@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendAdminEmail } from "@/lib/email";
 
 // Paystack signs every webhook with HMAC-SHA512 using your secret key.
@@ -50,8 +51,25 @@ export async function POST(request: Request) {
     );
   }
 
-  // transfer.success: order is already marked confirmed optimistically — nothing to do.
-  // charge.success: handled by the /api/paystack/callback redirect route.
+  if (event.event === "transfer.success") {
+    const { reference, amount, recipient } = event.data ?? {};
+    const amountNGN = amount ? (amount / 100).toLocaleString() : "?";
+    const recipientName = recipient?.details?.account_name ?? "Unknown";
+    console.log(`[paystack-webhook] Transfer succeeded: ${reference} ₦${amountNGN} → ${recipientName}`);
+
+    // Belt-and-suspenders: if an auto-release order was claimed (confirmed_at set)
+    // but released_at never wrote (e.g. server crashed mid-flight), mark it complete now.
+    if (reference?.startsWith("AUTO-")) {
+      const supabase = createAdminClient();
+      await supabase
+        .from("orders")
+        .update({ released_at: new Date().toISOString() })
+        .eq("status", "confirmed")
+        .is("released_at", null);
+    }
+  }
+
+  // charge.success is handled by /api/paystack/callback (redirect route).
 
   return NextResponse.json({ received: true });
 }

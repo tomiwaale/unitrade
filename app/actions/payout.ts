@@ -2,9 +2,16 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { payoutSchema, type PayoutInput } from "@/lib/validations/auth";
-import { resolveAccount, createTransferRecipient } from "@/lib/paystack";
-import { BANK_NAME_BY_CODE } from "@/lib/banks";
+import { resolveAccount, createTransferRecipient, createSubaccount, fetchBanks } from "@/lib/paystack";
 import { revalidatePath } from "next/cache";
+
+export async function getBanks() {
+  try {
+    return await fetchBanks();
+  } catch {
+    return [];
+  }
+}
 
 export async function savePayout(input: PayoutInput) {
   const result = payoutSchema.safeParse(input);
@@ -12,8 +19,7 @@ export async function savePayout(input: PayoutInput) {
     return { error: result.error.issues[0].message };
   }
 
-  const { bankCode, accountNumber } = result.data;
-  const bankName = BANK_NAME_BY_CODE[bankCode] ?? "Unknown Bank";
+  const { bankCode, accountNumber, bankName } = result.data;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -28,7 +34,7 @@ export async function savePayout(input: PayoutInput) {
     return { error: `Bank verification failed: ${err.message}` };
   }
 
-  // Create Paystack transfer recipient
+  // Create Paystack transfer recipient (kept for backward compat with existing pending orders)
   let recipientCode: string;
   try {
     recipientCode = await createTransferRecipient(accountName, accountNumber, bankCode);
@@ -36,10 +42,19 @@ export async function savePayout(input: PayoutInput) {
     return { error: `Failed to register payout account: ${err.message}` };
   }
 
+  // Create Paystack subaccount for split payments (seller keeps 90%)
+  let subaccountCode: string;
+  try {
+    subaccountCode = await createSubaccount(accountName, accountNumber, bankCode, 90);
+  } catch (err: any) {
+    return { error: `Failed to create subaccount: ${err.message}` };
+  }
+
   const { error: updateError } = await supabase
     .from("profiles")
     .update({
       recipient_code: recipientCode,
+      subaccount_code: subaccountCode,
       account_name: accountName,
       account_number: accountNumber,
       bank_code: bankCode,
@@ -54,5 +69,5 @@ export async function savePayout(input: PayoutInput) {
 
   revalidatePath("/profile");
   revalidatePath("/sell");
-  return { success: true, accountName };
+  return { success: true, accountName, bankName };
 }

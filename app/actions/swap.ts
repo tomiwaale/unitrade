@@ -2,8 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { rateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { notify } from "@/lib/notifications";
 
 export async function proposeSwap(
   wantedProductId: string,
@@ -15,6 +17,10 @@ export async function proposeSwap(
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  if (!rateLimit(`swap:${user.id}`, 10, 60_000)) {
+    return { error: "You're sending offers too quickly. Please wait a moment." };
+  }
 
   const { data: wanted } = await supabase
     .from("products")
@@ -101,6 +107,14 @@ export async function proposeSwap(
     });
   }
 
+  void notify(
+    wanted.seller_id,
+    "swap",
+    "New swap offer",
+    `Someone wants to swap for "${wanted.title}"`,
+    swapOffer.id,
+  );
+
   revalidatePath("/swaps");
   return { success: true, swapId: swapOffer.id };
 }
@@ -149,6 +163,16 @@ export async function respondToSwap(swapId: string, action: "accepted" | "declin
         ].join(","),
       );
   }
+
+  void notify(
+    offer.buyer_id,
+    "swap",
+    action === "accepted" ? "Swap offer accepted!" : "Swap offer declined",
+    action === "accepted"
+      ? "Your swap offer was accepted. Check your swaps to coordinate the exchange."
+      : "Your swap offer was not accepted this time.",
+    offer.wanted_product_id,
+  );
 
   revalidatePath("/swaps");
   revalidatePath(`/product/${offer.wanted_product_id}`);

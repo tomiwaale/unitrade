@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { ChevronLeft, Tag, MapPin, ShieldCheck, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import OrderActions from "./order-actions";
+import LeaveReview from "./leave-review";
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,6 +38,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const autoRelease  = order.auto_release_at ? new Date(order.auto_release_at) : null;
   const sellerPayout = Math.round(order.amount * 0.9).toLocaleString();
+
+  // Check if buyer already left a review (only needed for confirmed orders)
+  let hasReview = false;
+  if (isBuyer && order.status === "confirmed") {
+    const { data: review } = await supabase
+      .from("reviews")
+      .select("id")
+      .eq("order_id", id)
+      .maybeSingle();
+    hasReview = !!review;
+  }
 
   return (
     <div className="ut-app">
@@ -87,6 +99,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         {/* Buyer actions */}
         {isBuyer && order.status === "paid" && (
           <OrderActions orderId={order.id} sellerPayout={sellerPayout} />
+        )}
+
+        {/* Leave a review */}
+        {isBuyer && order.status === "confirmed" && !hasReview && (
+          <LeaveReview orderId={order.id} />
         )}
 
         {/* Meta */}

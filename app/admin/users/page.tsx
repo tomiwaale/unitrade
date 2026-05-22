@@ -17,7 +17,7 @@ export default async function AdminUsersPage({
   const [{ data: profiles }, { data: authData }] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, full_name, university, phone, created_at, recipient_code, is_admin, account_name, bank_name, account_number, school_id_url, school_id_status")
+      .select("id, full_name, university, phone, created_at, recipient_code, is_admin, account_name, bank_name, school_id_url, school_id_status")
       .order("created_at", { ascending: false }),
     admin.auth.admin.listUsers({ perPage: 1000 }),
   ]);

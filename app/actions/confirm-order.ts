@@ -2,7 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { transferToSeller } from "@/lib/paystack";
+import { settleSubaccount } from "@/lib/paystack";
+import { sendUserEmail, emailPayoutSent } from "@/lib/email";
+import { notify } from "@/lib/notifications";
 
 export async function confirmOrderReceived(orderId: string) {
   const supabase = await createClient();
@@ -17,8 +19,9 @@ export async function confirmOrderReceived(orderId: string) {
       id, amount, status, buyer_id,
       products(
         id,
+        title,
         seller_id,
-        profiles(recipient_code, full_name)
+        profiles(subaccount_code, full_name)
       )
     `)
     .eq("id", orderId)
@@ -30,20 +33,17 @@ export async function confirmOrderReceived(orderId: string) {
 
   const product = order.products as any;
   const sellerProfile = product?.profiles;
-  const recipientCode = sellerProfile?.recipient_code;
+  const subaccountCode = sellerProfile?.subaccount_code;
 
-  if (!recipientCode) {
+  if (!subaccountCode) {
     return { error: "Seller has not set up their payout account. Contact support." };
   }
 
-  // 90% of order amount in kobo
-  const payoutKobo = Math.round(order.amount * 0.9 * 100);
-  const transferRef = `PAYOUT-${orderId.slice(0, 8)}-${Date.now()}`;
-
+  // Trigger immediate settlement of the seller's subaccount (their 90% cut)
   try {
-    await transferToSeller(recipientCode, payoutKobo, transferRef);
+    await settleSubaccount(subaccountCode);
   } catch (err: any) {
-    console.error("Transfer failed:", err);
+    console.error("Settlement failed:", err);
     return { error: `Payout failed: ${err.message}` };
   }
 
@@ -59,6 +59,31 @@ export async function confirmOrderReceived(orderId: string) {
       released_at: now,
     })
     .eq("id", orderId);
+
+  void notify(
+    product.seller_id,
+    "order",
+    "Payment released!",
+    `The buyer confirmed receipt of "${product.title}". Your payout is on its way.`,
+    orderId,
+  );
+
+  // Email seller their payout is on the way
+  void (async () => {
+    try {
+      const { data: sellerAuth } = await admin.auth.admin.getUserById(product.seller_id);
+      if (sellerAuth.user?.email) {
+        const { subject, html } = emailPayoutSent({
+          sellerName: sellerProfile?.full_name ?? "there",
+          productTitle: (product as any).title ?? "your item",
+          amount: order.amount,
+        });
+        await sendUserEmail(sellerAuth.user.email, subject, html);
+      }
+    } catch (err) {
+      console.error("[email] Failed to send payout email:", err);
+    }
+  })();
 
   return { success: true };
 }
