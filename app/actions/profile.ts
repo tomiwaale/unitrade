@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -23,7 +24,8 @@ export async function updateProfile(input: unknown) {
   if (!user) return { error: "Not logged in" };
 
   // Check phone uniqueness (excluding current user)
-  const { data: existing } = await supabase
+  const admin = createAdminClient();
+  const { data: existing } = await admin
     .from("profiles")
     .select("id")
     .eq("phone", phone)

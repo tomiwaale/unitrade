@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from "@/lib/validations/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
@@ -50,9 +51,10 @@ export async function register(input: RegisterInput) {
 
   const { email, phone, password, fullName, university } = result.data;
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   // 1. Enforce phone uniqueness before creating the auth user
-  const { data: phoneExists } = await supabase
+  const { data: phoneExists } = await admin
     .from("profiles")
     .select("id")
     .eq("phone", phone)
@@ -78,7 +80,6 @@ export async function register(input: RegisterInput) {
     full_name: fullName,
     university,
     phone,
-    school_id_status: "none",
   });
 
   if (profileError) {

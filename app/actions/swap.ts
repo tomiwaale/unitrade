@@ -31,6 +31,9 @@ export async function proposeSwap(
   if (!wanted || wanted.status !== "active") {
     return { error: "This item is no longer available." };
   }
+  if (!["cash-or-swap", "swap-only"].includes(wanted.open_to ?? "")) {
+    return { error: "This seller is not accepting swap offers for this item." };
+  }
   if (wanted.seller_id === user.id) {
     return { error: "You cannot swap with yourself." };
   }
@@ -175,8 +178,7 @@ export async function respondToSwap(swapId: string, action: "accepted" | "declin
   );
 
   revalidatePath("/swaps");
-  revalidatePath(`/product/${offer.wanted_product_id}`);
-  revalidatePath(`/product/${offer.offered_product_id}`);
+  revalidatePath("/product/[id]", "page");
   return { success: true };
 }
 

@@ -1,16 +1,18 @@
 "use client";
 
 import { useTransition, useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createProduct } from "@/app/actions/product";
 import { toast } from "sonner";
 import { Check, MapPin, ArrowLeftRight, Shield, FileText, X } from "lucide-react";
 import ImageUploader from "@/components/image-uploader";
+import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
 
 const CATEGORIES = [
   { label: "Textbooks",   value: "textbooks" },
   { label: "Electronics", value: "electronics" },
-  { label: "Fashion",     value: "fashion" },
-  { label: "Hostel",      value: "hostel" },
+  { label: "Clothing",    value: "clothing" },
+  { label: "Furniture",   value: "furniture" },
   { label: "Services",    value: "services" },
   { label: "Other",       value: "other" },
 ];
@@ -75,6 +77,7 @@ function clearDraft() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SellForm({ defaultLocation, sellerName }: Props) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [category, setCategory] = useState("");
   const [condition, setCondition] = useState("good");
@@ -155,12 +158,15 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
 
   async function action(formData: FormData) {
     startTransition(async () => {
+      // Cancel any pending auto-save before clearing so the timer can't re-write after us
+      clearTimeout(autoSaveTimer.current);
+      clearDraft();
       const result = await createProduct(formData);
       if (result?.error) {
         toast.error(result.error);
       } else {
-        clearDraft();
         toast.success("Listing published!");
+        router.push("/listings");
       }
     });
   }
@@ -308,17 +314,21 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
               />
             </div>
 
-            {/* Meetup Hall */}
+            {/* Location */}
             <div className="ut-form-field full">
-              <label className="ut-field-label">Meetup Hall / Hostel</label>
-              <input
+              <label className="ut-field-label">Location (University / Campus)</label>
+              <select
                 name="location"
-                className="ut-input"
-                placeholder="e.g. Mariere Hall"
+                className="ut-select"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 required
-              />
+              >
+                <option value="" disabled>Select your university</option>
+                {NIGERIAN_UNIVERSITIES.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
             </div>
           </div>
 

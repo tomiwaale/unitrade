@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ShieldCheck, Lock, MessageSquare, ArrowUpRight, Package } from "lucide-react";
 import HeroSlider from "@/components/hero-slider";
 import { LandingNav } from "@/components/landing-nav";
+import { productHref } from "@/lib/product-slug";
 
 export const metadata: Metadata = {
   title: "KolejSwap — Buy, Sell & Swap at Nigerian Universities",
@@ -103,7 +104,7 @@ export default async function Home() {
                     ₦{Number(featuredItem.price).toLocaleString()}
                   </span>
                 )}
-                <Link href={featuredItem ? `/product/${featuredItem.id}` : "/catalog"}>
+                <Link href={featuredItem ? productHref(featuredItem.title, featuredItem.id) : "/catalog"}>
                   View <ArrowUpRight size={12} style={{ display: "inline", verticalAlign: "middle" }} />
                 </Link>
               </div>

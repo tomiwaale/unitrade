@@ -3,6 +3,7 @@ import { verifyTransaction } from "@/lib/paystack";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   sendUserEmail,
+  sendAdminEmail,
   emailOrderConfirmedBuyer,
   emailOrderNotificationSeller,
 } from "@/lib/email";
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     }
 
     // Already processed (e.g. user refreshed the callback URL)
-    if (pendingOrder.status !== "pending") {
+    if (pendingOrder.status !== "pending" && pendingOrder.status !== "expired") {
       return NextResponse.redirect(`${origin}/orders?success=payment_received`);
     }
 
@@ -54,16 +55,29 @@ export async function GET(request: Request) {
     const autoReleaseAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     // Guard against replay: only update if still "pending"
-    const { data: order } = await supabase
+    const { data: order, error: updateError } = await supabase
       .from("orders")
       .update({
         status: "paid",
         auto_release_at: autoReleaseAt,
       })
       .eq("paystack_reference", reference)
-      .eq("status", "pending")
+      .in("status", ["pending", "expired"])
       .select("id, product_id, buyer_id, amount")
       .single();
+
+    if (updateError || !order) {
+      console.error("[callback] Failed to mark paid:", updateError);
+      await sendAdminEmail(
+        `URGENT: Paid checkout needs review — ${reference}`,
+        `
+          <h2>Paid checkout could not be completed automatically</h2>
+          <p>Paystack verified payment for reference <b>${reference}</b>, but the order could not be marked paid.</p>
+          <p>This usually means the listing was already reserved or sold by another order. Review Paystack and the order table immediately.</p>
+        `,
+      );
+      return NextResponse.redirect(`${origin}/orders?error=payment_needs_review`);
+    }
 
     if (order?.product_id) {
       await supabase

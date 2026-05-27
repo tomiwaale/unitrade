@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/ui/navbar";
 import SellForm from "./sell-form";
@@ -13,14 +14,15 @@ export default async function SellPage() {
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  const admin = createAdminClient();
+  const { data: profile } = await admin
     .from("profiles")
-    .select("school_id_status, nin_verified, recipient_code, university, full_name")
+    .select("school_id_status, nin_verified, subaccount_code, university, full_name")
     .eq("id", user.id)
     .single();
 
-  const idVerified = profile?.school_id_status === "approved" || profile?.nin_verified === true;
-  const bankReady  = !!profile?.recipient_code;
+  const idVerified = profile?.school_id_status === "approved";
+  const bankReady  = !!profile?.subaccount_code;
 
   const defaultLocation = profile?.university ?? "";
   const sellerName      = profile?.full_name ?? "";

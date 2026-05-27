@@ -24,6 +24,12 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
+  const { data: expiredReservations, error: expireError } = await supabase
+    .rpc("expire_checkout_reservations");
+
+  if (expireError) {
+    console.error("[auto-release] reservation cleanup error:", expireError);
+  }
 
   const { data: orders, error } = await supabase
     .from("orders")
@@ -42,7 +48,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "DB query failed" }, { status: 500 });
   }
 
-  const results = { released: 0, failed: 0, skipped: 0, errors: [] as string[] };
+  const results = {
+    expiredReservations: expiredReservations ?? 0,
+    released: 0,
+    failed: 0,
+    skipped: 0,
+    errors: [] as string[],
+  };
 
   for (const order of orders ?? []) {
     const subaccountCode = (order as any).products?.profiles?.subaccount_code;

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Search, Bell, Bookmark, MessageSquare, ChevronDown, Plus, LayoutGrid, Package, User, X, Menu } from "lucide-react";
+import { Search, Bell, Bookmark, MessageSquare, ChevronDown, Plus, LayoutGrid, Package, User, X, Menu, LogOut } from "lucide-react";
+import { logout } from "@/app/actions/auth";
 import { LOC_CACHE_KEY, LOC_CACHE_TTL, type CachedLocation } from "@/lib/hooks/use-location";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
 
@@ -79,8 +80,11 @@ export function Navbar() {
   const [campusOpen,    setCampusOpen]    = useState(false);
   const [campusSearch,  setCampusSearch]  = useState("");
   const [menuOpen,      setMenuOpen]      = useState(false);
+  const [avatarOpen,    setAvatarOpen]    = useState(false);
+  const [initials,      setInitials]      = useState("U");
   const inputRef       = useRef<HTMLInputElement>(null);
   const campusRef      = useRef<HTMLDivElement>(null);
+  const avatarRef      = useRef<HTMLDivElement>(null);
   const notifChannelRef = useRef<any>(null);
 
   // ── Body scroll lock when mobile menu is open ──
@@ -108,10 +112,16 @@ export function Navbar() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("university")
+        .select("university, full_name")
         .eq("id", uid)
         .single();
       if (profile?.university) setUniversity(profile.university);
+      if (profile?.full_name) {
+        const parts = profile.full_name.trim().split(/\s+/);
+        setInitials(parts.length >= 2
+          ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+          : parts[0][0].toUpperCase());
+      }
 
       // Unread messages
       const { data: convs } = await supabase
@@ -193,6 +203,18 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [campusOpen]);
 
+  // ── Avatar dropdown: close on outside click ───────
+  useEffect(() => {
+    if (!avatarOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [avatarOpen]);
+
   function selectCampus(name: string) {
     setUniversity(name);
     setCampusOpen(false);
@@ -252,10 +274,97 @@ export function Navbar() {
                 <MessageSquare size={17} />
                 {unreadCount > 0 && <span className="ut-dot" />}
               </Link>
-              <Link href="/sell" className="ut-cta ut-cta-primary"
+              <Link href="/sell" className="ut-cta ut-cta-primary ut-nav-btn-desktop"
                 style={{ fontSize: 13, padding: "8px 14px", borderRadius: 999 }}>
                 <Plus size={14} /> Post
               </Link>
+
+              {/* ── Avatar / account dropdown ── */}
+              <div ref={avatarRef} style={{ position: "relative" }}>
+                <button
+                  onClick={() => setAvatarOpen(o => !o)}
+                  aria-label="Account menu"
+                  style={{
+                    width: 33, height: 33, borderRadius: "50%",
+                    background: "var(--ut-primary)", color: "white",
+                    border: "2px solid transparent",
+                    outline: avatarOpen ? "2px solid var(--ut-primary)" : "none",
+                    outlineOffset: 2,
+                    cursor: "pointer",
+                    fontSize: 11.5, fontWeight: 700, letterSpacing: "0.02em",
+                    fontFamily: "var(--ut-font-mono)",
+                    display: "grid", placeItems: "center", flexShrink: 0,
+                    transition: "outline 0.15s",
+                  }}
+                >
+                  {initials}
+                </button>
+
+                {avatarOpen && (
+                  <div style={{
+                    position: "absolute", top: "calc(100% + 10px)", right: 0, zIndex: 400,
+                    background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
+                    borderRadius: 14, width: 210,
+                    boxShadow: "0 10px 32px rgba(0,0,0,0.14)",
+                    overflow: "hidden",
+                  }}>
+                    {/* Initials header */}
+                    <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid var(--ut-line)", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--ut-primary)", color: "white", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700, fontFamily: "var(--ut-font-mono)", flexShrink: 0 }}>
+                        {initials}
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--ut-ink)" }}>My Account</p>
+                        <p style={{ margin: 0, fontSize: 11.5, color: "var(--ut-ink-mute)" }}>Manage your profile</p>
+                      </div>
+                    </div>
+
+                    {/* Menu items */}
+                    {[
+                      { href: "/profile",  Icon: User,     label: "Profile"     },
+                      { href: "/listings", Icon: Bookmark, label: "My Listings" },
+                      { href: "/orders",   Icon: Package,  label: "Orders"      },
+                    ].map(({ href, Icon, label }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setAvatarOpen(false)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10,
+                          padding: "10px 16px", fontSize: 13.5, color: "var(--ut-ink)",
+                          textDecoration: "none", transition: "background 0.1s",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--ut-bg-sunken)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <Icon size={15} style={{ color: "var(--ut-ink-mute)", flexShrink: 0 }} />
+                        {label}
+                      </Link>
+                    ))}
+
+                    <div style={{ height: 1, background: "var(--ut-line)", margin: "4px 0" }} />
+
+                    {/* Sign out */}
+                    <form action={logout}>
+                      <button
+                        type="submit"
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10, width: "100%",
+                          padding: "10px 16px", fontSize: 13.5,
+                          color: "var(--ut-destructive, #c0392b)",
+                          background: "transparent", border: "none", cursor: "pointer",
+                          textAlign: "left", transition: "background 0.1s",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--ut-bg-sunken)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <LogOut size={15} style={{ flexShrink: 0 }} />
+                        Sign out
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>

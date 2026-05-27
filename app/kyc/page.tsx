@@ -2,7 +2,8 @@
 
 import { useRef, useState, useTransition, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { submitSchoolId } from "@/app/actions/kyc";
+import { compressIdImage } from "@/lib/compress-image";
+import { getMyKycStatus, submitSchoolId } from "@/app/actions/kyc";
 import { Navbar } from "@/components/ui/navbar";
 import { toast } from "sonner";
 import {
@@ -15,25 +16,18 @@ type IdStatus = "none" | "pending" | "approved" | "rejected";
 
 export default function KYCPage() {
   const [status, setStatus] = useState<IdStatus>("none");
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [uploadedPath, setUploadedPath] = useState<string | null>(null);
+  const [reviewUrl, setReviewUrl] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase
-        .from("profiles")
-        .select("school_id_url, school_id_status")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          if (data?.school_id_status) setStatus(data.school_id_status as IdStatus);
-          if (data?.school_id_url) setUploadedUrl(data.school_id_url);
-        });
+    getMyKycStatus().then((result) => {
+      if (result?.error) return;
+      if (result?.status) setStatus(result.status as IdStatus);
+      if (result?.signedUrl) setReviewUrl(result.signedUrl);
     });
   }, []);
 
@@ -50,19 +44,20 @@ export default function KYCPage() {
     setUploading(true);
 
     try {
+      const compressed = await compressIdImage(file);
+
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${user.id}/school-id-${Date.now()}.${ext}`;
+      const path = `${user.id}/school-id-${Date.now()}.webp`;
       const { error } = await supabase.storage
         .from("school-ids")
-        .upload(path, file, { upsert: true });
+        .upload(path, compressed, { contentType: "image/webp", upsert: true });
       if (error) throw error;
 
-      const { data: { publicUrl } } = supabase.storage.from("school-ids").getPublicUrl(path);
-      setUploadedUrl(publicUrl);
+      setUploadedPath(path);
+      setReviewUrl(null);
     } catch (err: any) {
       toast.error(err.message ?? "Upload failed");
       setPreview(null);
@@ -72,13 +67,14 @@ export default function KYCPage() {
   }
 
   function onSubmit() {
-    if (!uploadedUrl) return;
+    if (!uploadedPath) return;
     startTransition(async () => {
-      const result = await submitSchoolId(uploadedUrl);
+      const result = await submitSchoolId(uploadedPath);
       if (result?.error) {
         toast.error(result.error);
       } else {
         setStatus("pending");
+        if (preview) setReviewUrl(preview);
         toast.success("School ID submitted for review!");
       }
     });
@@ -124,8 +120,8 @@ export default function KYCPage() {
                     Your school ID is being reviewed. We typically approve within a few hours.
                     You&apos;ll be notified once approved.
                   </p>
-                  {uploadedUrl && (
-                    <a href={uploadedUrl} target="_blank" rel="noreferrer"
+                  {(reviewUrl || preview) && (
+                    <a href={reviewUrl ?? preview ?? "#"} target="_blank" rel="noreferrer"
                       style={{ fontSize: 12.5, color: "var(--ut-primary)", textDecoration: "none" }}>
                       View submitted ID
                     </a>
@@ -148,10 +144,10 @@ export default function KYCPage() {
                   <UploadSection
                     preview={preview}
                     uploading={uploading}
-                    uploadedUrl={uploadedUrl}
+                    uploadedPath={uploadedPath}
                     inputRef={inputRef}
                     onFile={handleFile}
-                    onClear={() => { setPreview(null); setUploadedUrl(null); }}
+                    onClear={() => { setPreview(null); setUploadedPath(null); setReviewUrl(null); }}
                     onSubmit={onSubmit}
                     isPending={isPending}
                   />
@@ -176,10 +172,10 @@ export default function KYCPage() {
                   <UploadSection
                     preview={preview}
                     uploading={uploading}
-                    uploadedUrl={uploadedUrl}
+                    uploadedPath={uploadedPath}
                     inputRef={inputRef}
                     onFile={handleFile}
-                    onClear={() => { setPreview(null); setUploadedUrl(null); }}
+                    onClear={() => { setPreview(null); setUploadedPath(null); setReviewUrl(null); }}
                     onSubmit={onSubmit}
                     isPending={isPending}
                   />
@@ -196,7 +192,7 @@ export default function KYCPage() {
 interface UploadSectionProps {
   preview: string | null;
   uploading: boolean;
-  uploadedUrl: string | null;
+  uploadedPath: string | null;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onFile: (file: File) => void;
   onClear: () => void;
@@ -204,7 +200,7 @@ interface UploadSectionProps {
   isPending: boolean;
 }
 
-function UploadSection({ preview, uploading, uploadedUrl, inputRef, onFile, onClear, onSubmit, isPending }: UploadSectionProps) {
+function UploadSection({ preview, uploading, uploadedPath, inputRef, onFile, onClear, onSubmit, isPending }: UploadSectionProps) {
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -274,7 +270,7 @@ function UploadSection({ preview, uploading, uploadedUrl, inputRef, onFile, onCl
       <button
         type="button"
         className="ut-cta ut-cta-primary"
-        disabled={!uploadedUrl || isPending || uploading}
+        disabled={!uploadedPath || isPending || uploading}
         onClick={onSubmit}
         style={{ justifyContent: "center", padding: "13px 20px", borderRadius: 12 }}
       >

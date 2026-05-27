@@ -53,6 +53,6 @@ export async function submitReview(orderId: string, rating: number, comment: str
   );
 
   revalidatePath(`/orders/${orderId}`);
-  revalidatePath(`/product/${productId}`);
+  revalidatePath("/product/[id]", "page");
   return { success: true };
 }

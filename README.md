@@ -15,6 +15,12 @@ View your app in AI Studio: https://ai.studio/apps/8fbb3d9e-e3ba-4983-9fcc-1ff72
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Copy [.env.example](.env.example) to `.env.local` and fill in Supabase, Paystack, Resend, Prembly, and cron secrets.
+3. Apply the SQL in `supabase/schema.sql`, then run the migrations in `supabase/migrations` in numeric order.
+4. Configure Paystack webhook URL:
+   `https://your-domain.com/api/paystack/webhook`
+5. Configure a daily cron request to:
+   `GET https://your-domain.com/api/cron/auto-release`
+   with `Authorization: Bearer <CRON_SECRET>`.
+6. Run the app:
    `npm run dev`

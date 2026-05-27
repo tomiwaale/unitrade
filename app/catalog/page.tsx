@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
+import { productHref } from "@/lib/product-slug";
 
 const CATEGORY_META: Record<string, { title: string; description: string; keywords: string[] }> = {
   textbooks: {
@@ -297,6 +298,10 @@ export default async function CatalogPage({
     ];
   }
 
+  const schoolCount = userUniversity
+    ? items.filter((p) => (p.seller as any)?.university === userUniversity).length
+    : 0;
+
   const SORT_CHIPS = [
     { label: "Recently posted", value: "recent",       key: "sort" },
     { label: "Under ₦5k",       value: "5000",         key: "max_price" },
@@ -361,6 +366,25 @@ export default async function CatalogPage({
           </Link>
         </div>
 
+        {/* ── No-school nudge banner ── */}
+        {isLoggedIn && !userUniversity && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+            padding: "10px 14px", borderRadius: "var(--ut-radius)", marginBottom: 14,
+            background: "color-mix(in srgb, var(--ut-primary) 8%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--ut-primary) 20%, transparent)",
+            fontSize: 13, color: "var(--ut-ink-mute)",
+          }}>
+            <MapPin size={14} style={{ flexShrink: 0, color: "var(--ut-primary-ink)" }} />
+            <span>Set your university to see your campus listings first.</span>
+            <Link href="/profile" style={{
+              fontWeight: 600, color: "var(--ut-primary-ink)", textDecoration: "none", marginLeft: "auto",
+            }}>
+              Set it now →
+            </Link>
+          </div>
+        )}
+
         {/* ── Category pills ── */}
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 6 }}>
           {cats.map((cat) => {
@@ -396,6 +420,8 @@ export default async function CatalogPage({
           conditionFilter={conditionFilter}
           openToFilter={openToFilter}
           universityFilter={universityFilter}
+          userUniversity={userUniversity}
+          schoolCount={schoolCount}
         />
 
         {/* ── Filter rail (desktop only — hidden on mobile via CSS) ── */}
@@ -469,7 +495,7 @@ export default async function CatalogPage({
             );
           })}
 
-          {/* Active university badge */}
+          {/* Active university badge (explicit URL filter) */}
           {universityFilter && (
             <>
               <span style={{ width: 1, height: 18, background: "var(--ut-line)", margin: "0 2px", alignSelf: "center" }} />
@@ -485,12 +511,40 @@ export default async function CatalogPage({
             </>
           )}
 
+          {/* School-first indicator (personalisation — no explicit URL filter) */}
+          {userUniversity && !universityFilter && (
+            <>
+              <span style={{ width: 1, height: 18, background: "var(--ut-line)", margin: "0 2px", alignSelf: "center" }} />
+              <Link
+                href={buildHref(baseParams, { university: userUniversity })}
+                className="ut-chip"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  background: "color-mix(in srgb, var(--ut-primary) 10%, transparent)",
+                  color: "var(--ut-primary-ink)",
+                  borderColor: "color-mix(in srgb, var(--ut-primary) 22%, transparent)",
+                }}
+                title="Click to show only your school's listings"
+              >
+                <MapPin size={10} />
+                {userUniversity.length > 28 ? userUniversity.slice(0, 28) + "…" : userUniversity}
+                {schoolCount > 0 && <span style={{ opacity: 0.7 }}>· {schoolCount}</span>}
+              </Link>
+            </>
+          )}
+
         </div>
 
         {/* ── Section header ── */}
         <div className="ut-section-head" style={{ marginTop: 4 }}>
           <div>
-            <span className="ut-sub">{universityFilter ? universityFilter : "On campus now"}</span>
+            <span className="ut-sub">
+            {universityFilter
+              ? universityFilter
+              : userUniversity
+                ? `Showing ${userUniversity} first`
+                : "On campus now"}
+          </span>
             <h2>
               {qFilter
                 ? `Results for "${qFilter}"`
@@ -552,7 +606,7 @@ export default async function CatalogPage({
               const emoji  = categoryToEmoji(item.category, item.listing_type === "service");
               const hasImg = item.images && item.images.length > 0;
               return (
-                <Link key={item.id} href={`/product/${item.id}`} style={{
+                <Link key={item.id} href={productHref(item.title, item.id)} style={{
                   display: "flex", alignItems: "center", gap: 14,
                   padding: "14px 16px", borderRadius: "var(--ut-radius)",
                   background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
@@ -620,7 +674,7 @@ export default async function CatalogPage({
               const emoji   = categoryToEmoji(item.category, item.listing_type === "service");
               const hasImage = item.images && item.images.length > 0;
               return (
-                <Link key={item.id} href={`/product/${item.id}`} className="ut-card ut-fade-up" style={{ animationDelay: `${i * 40}ms` }}>
+                <Link key={item.id} href={productHref(item.title, item.id)} className="ut-card ut-fade-up" style={{ animationDelay: `${i * 40}ms` }}>
                   <div className="ut-card-media" style={{ background: hasImage ? undefined : SWATCH_BG[swatch] }}>
                     {hasImage ? (
                       // eslint-disable-next-line @next/next/no-img-element

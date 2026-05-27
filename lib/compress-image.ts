@@ -21,3 +21,14 @@ export async function compressSlideImage(file: File): Promise<File> {
     fileType: "image/webp",
   });
 }
+
+// School / student ID cards — legible but compact
+export async function compressIdImage(file: File): Promise<File> {
+  return imageCompression(file, {
+    maxSizeMB: 0.4,
+    maxWidthOrHeight: 1200,
+    initialQuality: 0.82,
+    useWebWorker: true,
+    fileType: "image/webp",
+  });
+}

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -37,19 +38,20 @@ export async function createProduct(formData: FormData) {
     return { error: "You must be logged in" };
   }
 
-  if (!rateLimit(`listing:${user.id}`, 5, 60 * 60_000)) {
+  if (!rateLimit(`listing:${user.id}`, 20, 60 * 60_000)) {
     return { error: "You're creating listings too quickly. Please wait before trying again." };
   }
 
-  const { data: profile } = await supabase
+  const admin = createAdminClient();
+  const { data: profile } = await admin
     .from("profiles")
     .select("nin_verified, school_id_status")
     .eq("id", user.id)
     .single();
 
-  const isVerified = profile?.nin_verified || profile?.school_id_status === "approved";
+  const isVerified = profile?.school_id_status === "approved";
   if (!isVerified) {
-    return { error: "ID verification required before listing items. Please complete KYC at /kyc." };
+    return { error: "School ID verification required before listing items. Please complete KYC at /kyc." };
   }
 
   const input = {
@@ -82,7 +84,6 @@ export async function createProduct(formData: FormData) {
     open_to,
     location,
     listing_type,
-    status: "active",
   });
 
   if (error) {
@@ -91,7 +92,7 @@ export async function createProduct(formData: FormData) {
   }
 
   revalidatePath("/catalog");
-  redirect("/listings");
+  return { success: true };
 }
 
 export async function updateProduct(productId: string, formData: FormData) {

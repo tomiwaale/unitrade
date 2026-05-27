@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { payoutSchema, type PayoutInput } from "@/lib/validations/auth";
 import { resolveAccount, createTransferRecipient, createSubaccount, fetchBanks } from "@/lib/paystack";
 import { revalidatePath } from "next/cache";
@@ -50,7 +51,8 @@ export async function savePayout(input: PayoutInput) {
     return { error: `Failed to create subaccount: ${err.message}` };
   }
 
-  const { error: updateError } = await supabase
+  const admin = createAdminClient();
+  const { error: updateError } = await admin
     .from("profiles")
     .update({
       recipient_code: recipientCode,

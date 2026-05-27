@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { ArrowLeftRight, ArrowRight, Clock, CheckCircle2, XCircle, Ban, Tag, Plus } from "lucide-react";
 import { SellerSwapActions, BuyerCancelAction } from "./swap-actions";
+import { productHref } from "@/lib/product-slug";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ function ProductThumb({ product }: { product: any }) {
   const image = product?.images?.[0];
   return (
     <Link
-      href={product?.id ? `/product/${product.id}` : "#"}
+      href={product?.id && product?.title ? productHref(product.title, product.id) : "#"}
       style={{
         display: "flex", alignItems: "center", gap: 10,
         padding: "10px 12px", borderRadius: 10,

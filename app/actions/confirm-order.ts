@@ -12,8 +12,10 @@ export async function confirmOrderReceived(orderId: string) {
 
   if (!user) return { error: "Not logged in" };
 
+  const admin = createAdminClient();
+
   // Fetch order with seller's recipient_code
-  const { data: order, error } = await supabase
+  const { data: order, error } = await admin
     .from("orders")
     .select(`
       id, amount, status, buyer_id,
@@ -48,7 +50,6 @@ export async function confirmOrderReceived(orderId: string) {
   }
 
   // Mark order as confirmed and released using admin client
-  const admin = createAdminClient();
   const now = new Date().toISOString();
 
   await admin

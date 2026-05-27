@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
   MapPin, ChevronLeft, Shield, Lock, ArrowLeftRight, Star,
@@ -10,6 +10,9 @@ import MessageSellerBtn from "./message-seller-btn";
 import ProposeSwapBtn from "./propose-swap-btn";
 import WishlistBtn from "@/app/catalog/wishlist-btn";
 import { Navbar } from "@/components/ui/navbar";
+import { parseProductId, productSlug, productHref, isRawUuid } from "@/lib/product-slug";
+
+export const revalidate = 3600;
 
 const CAT_LABELS: Record<string, string> = {
   textbooks: "Textbooks", electronics: "Electronics", furniture: "Furniture",
@@ -48,12 +51,15 @@ function abbreviateName(name: string) {
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Metadata> {
-  const { id } = await params;
+  const { id: param } = await params;
+  const productId = parseProductId(param);
+  if (!productId) return { title: "Listing not found · KolejSwap" };
+
   const supabase = await createClient();
   const { data: product } = await supabase
     .from("products")
-    .select("title, description, price, images, category, profiles(university)")
-    .eq("id", id)
+    .select("id, title, description, price, images, category, profiles(university)")
+    .eq("id", productId)
     .single();
 
   if (!product) return { title: "Listing not found · KolejSwap" };
@@ -71,6 +77,7 @@ export async function generateMetadata(
   const description = `${baseDesc}${ellipsis}${university ? ` Listed by a student at ${university}.` : ""} Buy safely with escrow on KolejSwap.`;
   const image       = product.images?.[0];
   const catLabel    = CAT_LABELS[product.category] ?? product.category ?? "Items";
+  const canonical   = `${appUrl}/product/${productSlug(product.title, product.id)}`;
 
   return {
     title,
@@ -84,11 +91,11 @@ export async function generateMetadata(
       "student marketplace Nigeria",
       "buy campus items Nigeria",
     ].filter(Boolean),
-    alternates: { canonical: `${appUrl}/product/${id}` },
+    alternates: { canonical },
     openGraph: {
       title,
       description,
-      url: `${appUrl}/product/${id}`,
+      url: canonical,
       siteName: "KolejSwap",
       ...(image ? { images: [{ url: image, width: 1200, height: 630, alt: product.title }] } : {}),
       type: "website",
@@ -103,25 +110,41 @@ export async function generateMetadata(
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: param } = await params;
+
+  const productId = parseProductId(param);
+  if (!productId) notFound();
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: product, error } = await supabase
     .from("products")
     .select("*, profiles(full_name, university)")
-    .eq("id", id)
+    .eq("id", productId)
     .single();
 
   if (error || !product) notFound();
 
-  // Deal count + seller rating
-  const { data: sellerProductIds } = await supabase
-    .from("products")
-    .select("id")
-    .eq("seller_id", product.seller_id);
+  // Redirect old plain-UUID URLs to canonical slug URL
+  if (isRawUuid(param)) {
+    redirect(`/product/${productSlug(product.title, product.id)}`);
+  }
 
-  const ids = (sellerProductIds ?? []).map((p: any) => p.id);
+  // Deal count + seller rating + related products (run in parallel)
+  const [sellerProductsRes, sellerReviewsRes, relatedRes] = await Promise.all([
+    supabase.from("products").select("id").eq("seller_id", product.seller_id),
+    supabase.from("reviews").select("rating").eq("seller_id", product.seller_id),
+    supabase
+      .from("products")
+      .select("id, title, price, images, category, condition, location")
+      .eq("category", product.category)
+      .eq("status", "active")
+      .neq("id", product.id)
+      .limit(4),
+  ]);
+
+  const ids = (sellerProductsRes.data ?? []).map((p: any) => p.id);
   let dealCount = 0;
   if (ids.length > 0) {
     const { count } = await supabase
@@ -132,13 +155,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     dealCount = count ?? 0;
   }
 
-  const { data: sellerReviews } = await supabase
-    .from("reviews")
-    .select("rating")
-    .eq("seller_id", product.seller_id);
-  const sellerRating = sellerReviews && sellerReviews.length > 0
+  const sellerReviews = sellerReviewsRes.data ?? [];
+  const sellerRating = sellerReviews.length > 0
     ? (sellerReviews.reduce((s: number, r: any) => s + r.rating, 0) / sellerReviews.length).toFixed(1)
     : null;
+
+  const relatedProducts = relatedRes.data ?? [];
 
   // Unread messages + wishlist state — only needed when logged in
   let unreadCount = 0;
@@ -180,14 +202,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const bgColor     = SWATCH_BG[product.category] ?? "#EFEBE3";
   const emoji       = CAT_EMOJI[product.category as string] ?? "📦";
 
-  const sellerName      = product.profiles?.full_name ?? "Seller";
-  const sellerFirstName = sellerName.split(" ")[0];
-  const sellerAbbrev    = abbreviateName(sellerName);
-  const sellerInitials  = getInitials(sellerName);
+  const sellerName       = product.profiles?.full_name ?? "Seller";
+  const sellerFirstName  = sellerName.split(" ")[0];
+  const sellerAbbrev     = abbreviateName(sellerName);
+  const sellerInitials   = getInitials(sellerName);
   const sellerUniversity = product.profiles?.university ?? "";
-  const meetupLocation  = product.location ? product.location.split(",")[0] : null;
-  const catLabel        = CAT_LABELS[product.category] ?? product.category ?? "";
-  const conditionLabel  = product.condition ? (CONDITION_LABELS[product.condition] ?? product.condition) : null;
+  const meetupLocation   = product.location ? product.location.split(",")[0] : null;
+  const catLabel         = CAT_LABELS[product.category] ?? product.category ?? "";
+  const conditionLabel   = product.condition ? (CONDITION_LABELS[product.condition] ?? product.condition) : null;
 
   // Always show 4 thumbnail slots
   const thumbImages: (string | null)[] = [
@@ -199,7 +221,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     process.env.APP_URL?.startsWith("http")
       ? process.env.APP_URL
       : "https://kolejswap.com";
-  const sellerNameRaw = product.profiles?.full_name ?? "KolejSwap Seller";
+  const sellerNameRaw  = product.profiles?.full_name ?? "KolejSwap Seller";
+  const canonicalUrl   = `${appUrl}/product/${productSlug(product.title, product.id)}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -207,7 +230,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     name: product.title,
     description: product.description,
     image: product.images ?? [],
-    url: `${appUrl}/product/${product.id}`,
+    url: canonicalUrl,
+    sku: product.id,
     brand: { "@type": "Brand", name: "KolejSwap" },
     offers: {
       "@type": "Offer",
@@ -218,7 +242,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           ? "https://schema.org/InStock"
           : "https://schema.org/SoldOut",
       seller: { "@type": "Person", name: sellerNameRaw },
-      url: `${appUrl}/product/${product.id}`,
+      url: canonicalUrl,
     },
     ...(product.condition
       ? { itemCondition: `https://schema.org/${product.condition === "new" ? "NewCondition" : "UsedCondition"}` }
@@ -232,7 +256,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       { "@type": "ListItem", position: 1, name: "Home",   item: appUrl },
       { "@type": "ListItem", position: 2, name: "Browse", item: `${appUrl}/catalog` },
       { "@type": "ListItem", position: 3, name: catLabel, item: `${appUrl}/catalog?category=${product.category}` },
-      { "@type": "ListItem", position: 4, name: product.title, item: `${appUrl}/product/${product.id}` },
+      { "@type": "ListItem", position: 4, name: product.title, item: canonicalUrl },
     ],
   };
 
@@ -458,6 +482,58 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
         </div>
+
+        {/* ── Related listings ── */}
+        {relatedProducts.length > 0 && (
+          <section style={{ marginTop: 56 }}>
+            <div className="ut-section-head" style={{ marginBottom: 20 }}>
+              <div>
+                <span className="ut-sub">More like this</span>
+                <h2>Similar {catLabel}</h2>
+              </div>
+              <Link href={`/catalog?category=${product.category}`} className="ut-chip">
+                See all
+              </Link>
+            </div>
+            <div className="ut-grid">
+              {relatedProducts.map((item: any) => {
+                const hasImg  = item.images && item.images.length > 0;
+                const itemBg  = SWATCH_BG[item.category] ?? "#EFEBE3";
+                const itemEmoji = CAT_EMOJI[item.category as string] ?? "📦";
+                const itemCond = item.condition ? (CONDITION_LABELS[item.condition] ?? item.condition) : null;
+                return (
+                  <Link key={item.id} href={productHref(item.title, item.id)} className="ut-card">
+                    <div className="ut-card-media" style={{ background: hasImg ? undefined : itemBg }}>
+                      {hasImg ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.images[0]} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <span className="ut-card-media-emoji" aria-hidden>{itemEmoji}</span>
+                      )}
+                    </div>
+                    <div className="ut-card-body">
+                      <h3 className="ut-card-title">{item.title}</h3>
+                      {itemCond && (
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--ut-ink-mute)", fontFamily: "var(--ut-font-mono)" }}>
+                          {itemCond}
+                        </p>
+                      )}
+                      <div className="ut-card-price-row" style={{ marginTop: 8 }}>
+                        <span className="ut-price">₦{Number(item.price).toLocaleString()}</span>
+                        {item.location && (
+                          <span className="ut-card-foot">
+                            <MapPin size={10} />
+                            {item.location.split(",")[0]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </main>
     </div>
     </>

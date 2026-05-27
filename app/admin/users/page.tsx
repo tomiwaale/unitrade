@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { adminApproveSchoolId, adminRejectSchoolId } from "@/app/actions/admin";
 import UsersControls from "./users-controls";
+import { IdImage } from "@/components/admin/id-image";
+import { createSchoolIdSignedUrl } from "@/lib/school-id";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -26,7 +28,14 @@ export default async function AdminUsersPage({
     (authData?.users ?? []).map((u) => [u.id, u.email ?? ""])
   );
 
-  const users = (profiles ?? []).map((p: any) => ({
+  const signedProfiles = await Promise.all(
+    (profiles ?? []).map(async (p: any) => ({
+      ...p,
+      school_id_url: await createSchoolIdSignedUrl(p.school_id_url),
+    })),
+  );
+
+  const users = signedProfiles.map((p: any) => ({
     ...p,
     email: emailByUserId[p.id] ?? "",
   }));
@@ -236,11 +245,7 @@ function SchoolIdContent({ user, idStatus }: { user: any; idStatus: string }) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {user.school_id_url && (
-          <a href={user.school_id_url} target="_blank" rel="noreferrer"
-            style={{ display: "block", width: 56, height: 40, borderRadius: 6, overflow: "hidden", border: "1px solid var(--ut-line)", flexShrink: 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={user.school_id_url} alt="School ID" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          </a>
+          <IdImage url={user.school_id_url} width={56} height={40} borderRadius={6} />
         )}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 700, color: "var(--ut-primary-ink)" }}>
           <CheckCircle2 size={15} /> Approved
@@ -260,15 +265,11 @@ function SchoolIdContent({ user, idStatus }: { user: any; idStatus: string }) {
   if (idStatus === "pending" && user.school_id_url) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <a href={user.school_id_url} target="_blank" rel="noreferrer"
-          style={{ display: "block", width: 72, height: 52, borderRadius: 8, overflow: "hidden", border: "1px solid var(--ut-line)", flexShrink: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={user.school_id_url} alt="School ID" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        </a>
+        <IdImage url={user.school_id_url} width={72} height={52} borderRadius={8} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "#92400e" }}>
-            <Clock size={13} /> Pending review — tap thumbnail to view full image
+            <Clock size={13} /> Pending review
           </span>
           <div style={{ display: "flex", gap: 6 }}>
             <form action={adminApproveSchoolId.bind(null, user.id)}>

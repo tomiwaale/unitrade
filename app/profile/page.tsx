@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
@@ -6,6 +7,7 @@ import { CheckCircle2, MapPin, ArrowRight, Package, Star, Landmark } from "lucid
 import LocationDisplay from "@/components/ui/location-display";
 import PayoutSetupCard from "./payout-setup";
 import ProfileEdit from "./profile-edit";
+import { productHref } from "@/lib/product-slug";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -38,9 +40,10 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/profile");
+  const admin = createAdminClient();
 
   // ─── Profile ───────────────────────────────────────
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from("profiles")
     .select("full_name, university, phone, created_at, recipient_code, nin_verified, bank_name, account_name, account_number, school_id_status")
     .eq("id", user.id)
@@ -265,7 +268,7 @@ export default async function ProfilePage() {
               const hasImg = item.images && item.images.length > 0;
               const emoji  = CAT_EMOJI[item.category as string] ?? "📦";
               return (
-                <Link key={item.id} href={`/product/${item.id}`} className="ut-card">
+                <Link key={item.id} href={productHref(item.title, item.id)} className="ut-card">
                   <div className="ut-card-media" style={{ background: hasImg ? undefined : SWATCH_BG[i % 6] }}>
                     {hasImg ? (
                       // eslint-disable-next-line @next/next/no-img-element

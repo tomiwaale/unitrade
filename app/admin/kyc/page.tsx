@@ -1,11 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Clock, CheckCircle2, XCircle, GraduationCap } from "lucide-react";
 import { adminApproveSchoolId, adminRejectSchoolId } from "@/app/actions/admin";
+import { IdImage } from "@/components/admin/id-image";
+import { createSchoolIdSignedUrl } from "@/lib/school-id";
 
 export default async function AdminKycPage() {
   const admin = createAdminClient();
 
-  const [{ data: pending }, { data: recent }] = await Promise.all([
+  const [{ data: pendingRaw }, { data: recentRaw }] = await Promise.all([
     admin
       .from("profiles")
       .select("id, full_name, university, school_id_url, school_id_status, created_at")
@@ -17,6 +19,11 @@ export default async function AdminKycPage() {
       .in("school_id_status", ["approved", "rejected"])
       .order("created_at", { ascending: false })
       .limit(20),
+  ]);
+
+  const [pending, recent] = await Promise.all([
+    withSignedIdUrls(pendingRaw ?? []),
+    withSignedIdUrls(recentRaw ?? []),
   ]);
 
   return (
@@ -61,7 +68,11 @@ export default async function AdminKycPage() {
                 borderRadius: "var(--ut-radius)", padding: "12px 18px",
                 display: "flex", alignItems: "center", gap: 14,
               }}>
-                <GraduationCap size={15} style={{ color: "var(--ut-ink-mute)", flexShrink: 0 }} />
+                {user.school_id_url ? (
+                  <IdImage url={user.school_id_url} width={48} height={34} borderRadius={6} />
+                ) : (
+                  <GraduationCap size={15} style={{ color: "var(--ut-ink-mute)", flexShrink: 0 }} />
+                )}
                 <div style={{ flex: 1 }}>
                   <span style={{ fontWeight: 600, fontSize: 13, color: "var(--ut-ink)" }}>{user.full_name}</span>
                   <span style={{ fontSize: 12, color: "var(--ut-ink-mute)", marginLeft: 8 }}>{user.university}</span>
@@ -81,6 +92,15 @@ export default async function AdminKycPage() {
         </>
       )}
     </div>
+  );
+}
+
+async function withSignedIdUrls<T extends { school_id_url?: string | null }>(users: T[]) {
+  return Promise.all(
+    users.map(async (user) => ({
+      ...user,
+      school_id_url: await createSchoolIdSignedUrl(user.school_id_url),
+    })),
   );
 }
 
@@ -109,23 +129,7 @@ function KycCard({ user }: { user: any }) {
 
       <div style={{ padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
         {/* ID image */}
-        <a
-          href={user.school_id_url}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: "block", flexShrink: 0,
-            width: 160, height: 110, borderRadius: 10, overflow: "hidden",
-            border: "1px solid var(--ut-line)",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={user.school_id_url}
-            alt="School ID"
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        </a>
+        <IdImage url={user.school_id_url} width={160} height={110} />
 
         <div style={{ flex: 1 }}>
           <p style={{ margin: "0 0 6px", fontSize: 12, color: "var(--ut-ink-mute)" }}>

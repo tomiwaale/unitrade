@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { productSlug } from "@/lib/product-slug";
 
 const PAGE_SIZE = 50_000; // Sitemap protocol max per file
 
@@ -40,13 +41,13 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   const { data: products } = await supabase
     .from("products")
-    .select("id, updated_at")
+    .select("id, title, updated_at")
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .range(id * PAGE_SIZE, (id + 1) * PAGE_SIZE - 1);
 
   const productUrls: MetadataRoute.Sitemap = (products ?? []).map((p) => ({
-    url: `${appUrl}/product/${p.id}`,
+    url: `${appUrl}/product/${productSlug(p.title, p.id)}`,
     lastModified: new Date(p.updated_at ?? Date.now()),
     changeFrequency: "daily",
     priority: 0.8,

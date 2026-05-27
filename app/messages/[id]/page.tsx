@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { ChevronLeft, Tag } from "lucide-react";
+import { productHref } from "@/lib/product-slug";
 import ChatView from "./chat-view";
 
 export const dynamic = "force-dynamic";
@@ -73,7 +74,9 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
               <span>Student trader</span>
             </div>
             <Link
-              href={`/product/${(conv.products as any)?.id}`}
+              href={(conv.products as any)?.id && (conv.products as any)?.title
+                ? productHref((conv.products as any).title, (conv.products as any).id)
+                : "#"}
               className="listing-ref"
             >
               <Tag size={11} style={{ verticalAlign: "middle", marginRight: 4 }} />

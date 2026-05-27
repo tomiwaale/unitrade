@@ -15,6 +15,8 @@ interface Props {
   conditionFilter: string | null;
   openToFilter: string | null;
   universityFilter: string | null;
+  userUniversity: string | null;
+  schoolCount: number;
 }
 
 function buildHref(base: Params, overrides: Params): string {
@@ -56,7 +58,8 @@ function deriveSortKey(sortFilter: string, maxPrice: number | null, todayOnly: b
 }
 
 export function MobileFilterBar({
-  baseParams, sortFilter, maxPrice, todayOnly, conditionFilter, openToFilter, universityFilter,
+  baseParams, sortFilter, maxPrice, todayOnly, conditionFilter, openToFilter,
+  universityFilter, userUniversity, schoolCount,
 }: Props) {
   const router = useRouter();
   const sortKey = deriveSortKey(sortFilter, maxPrice, todayOnly);
@@ -79,7 +82,7 @@ export function MobileFilterBar({
     (todayOnly ? 1 : 0);
 
   const sortLabel = SORT_OPTS.find(o => o.key === sortKey)?.label ?? "Recently posted";
-  const hasActive = !!(conditionFilter || openToFilter || maxPrice || todayOnly || universityFilter);
+  const hasActive = !!(conditionFilter || openToFilter || maxPrice || todayOnly || universityFilter || userUniversity);
 
   function openSheet() {
     // Reset pending state to current URL values each time sheet opens
@@ -151,6 +154,21 @@ export function MobileFilterBar({
                 <MapPin size={10} />
                 {universityFilter.length > 22 ? universityFilter.slice(0, 22) + "…" : universityFilter}
                 <X size={10} />
+              </Link>
+            )}
+            {userUniversity && !universityFilter && (
+              <Link
+                href={buildHref(baseParams, { university: userUniversity })}
+                className="ut-mfb-chip"
+                style={{
+                  background: "color-mix(in srgb, var(--ut-primary) 10%, transparent)",
+                  color: "var(--ut-primary-ink)",
+                  borderColor: "color-mix(in srgb, var(--ut-primary) 22%, transparent)",
+                }}
+              >
+                <MapPin size={10} />
+                {userUniversity.length > 20 ? userUniversity.slice(0, 20) + "…" : userUniversity} first
+                {schoolCount > 0 && <span style={{ opacity: 0.7 }}>· {schoolCount}</span>}
               </Link>
             )}
           </div>

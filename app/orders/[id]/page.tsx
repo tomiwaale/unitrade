@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
@@ -13,7 +14,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   if (!user) redirect("/login");
 
-  const { data: order, error } = await supabase
+  const admin = createAdminClient();
+  const { data: order, error } = await admin
     .from("orders")
     .select(`
       id, amount, status, created_at, auto_release_at,
