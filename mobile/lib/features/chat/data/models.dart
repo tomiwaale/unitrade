@@ -7,6 +7,7 @@ class ChatMessage {
     this.content,
     this.imageUrl,
     this.readAt,
+    this.hiddenAt,
   });
 
   final String id;
@@ -20,8 +21,14 @@ class ChatMessage {
   final String? imageUrl;
   final DateTime? readAt;
 
+  /// Set when a moderator takes the message down (031_user_safety.sql). The
+  /// content is already replaced with a tombstone server-side; this is what
+  /// lets the bubble style itself as removed and drop its report affordance.
+  final DateTime? hiddenAt;
+
   bool get hasText => (content?.trim().isNotEmpty ?? false);
   bool get isRead => readAt != null;
+  bool get isRemoved => hiddenAt != null;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: json['id'] as String,
@@ -31,6 +38,7 @@ class ChatMessage {
         imageUrl: json['image_url'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
         readAt: json['read_at'] != null ? DateTime.parse(json['read_at'] as String) : null,
+        hiddenAt: json['hidden_at'] != null ? DateTime.parse(json['hidden_at'] as String) : null,
       );
 }
 

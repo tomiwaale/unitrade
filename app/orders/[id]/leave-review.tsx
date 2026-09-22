@@ -17,7 +17,7 @@ export default function LeaveReview({ orderId }: { orderId: string }) {
     if (!rating) { toast.error("Please select a star rating"); return; }
     startTransition(async () => {
       const result = await submitReview(orderId, rating, comment);
-      if (result?.error) {
+      if (result && "error" in result) {
         toast.error(result.error);
       } else {
         setDone(true);

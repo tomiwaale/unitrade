@@ -4,6 +4,10 @@
          FCM uses this for notifications that arrive while the app is
          backgrounded; without it those land on a system fallback channel at
          default importance instead of the high-importance channel the app
-         defines, so foreground and background banners behave differently. -->
+         defines, so foreground and background banners behave differently.
+
+         Only a fallback: send-push sets android.notification.channel_id per
+         notification type, so order pushes land on the vibrating "orders"
+         channel and this covers everything else. -->
     <string name="default_notification_channel_id">default</string>
 </resources>

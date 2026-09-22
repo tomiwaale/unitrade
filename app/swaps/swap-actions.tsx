@@ -14,7 +14,7 @@ export function SellerSwapActions({ swapId }: { swapId: string }) {
   function handleAccept() {
     startAccept(async () => {
       const result = await respondToSwap(swapId, "accepted");
-      if (result?.error) {
+      if (result && "error" in result) {
         toast.error(result.error);
       } else {
         toast.success("Swap accepted! Both items are now marked as sold.");
@@ -26,7 +26,7 @@ export function SellerSwapActions({ swapId }: { swapId: string }) {
   function handleDecline() {
     startDecline(async () => {
       const result = await respondToSwap(swapId, "declined");
-      if (result?.error) {
+      if (result && "error" in result) {
         toast.error(result.error);
       } else {
         toast.success("Offer declined.");
@@ -79,7 +79,7 @@ export function BuyerCancelAction({ swapId }: { swapId: string }) {
   function handleCancel() {
     startTransition(async () => {
       const result = await cancelSwap(swapId);
-      if (result?.error) {
+      if (result && "error" in result) {
         toast.error(result.error);
       } else {
         toast.success("Swap offer cancelled.");

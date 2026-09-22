@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSchoolIdSignedUrl } from "@/lib/school-id";
-import { verifyNIN } from "@/lib/nin";
+import { submitNINVerification } from "@/lib/kyc";
 import { revalidatePath } from "next/cache";
 
 export async function getMyKycStatus() {
@@ -35,45 +35,14 @@ export async function submitNIN(nin: string) {
 
   if (!user) return { error: "You must be logged in" };
 
-  if (!/^\d{11}$/.test(nin)) {
-    return { error: "NIN must be exactly 11 digits" };
+  const result = await submitNINVerification(nin, user.id);
+
+  if ("success" in result) {
+    revalidatePath("/kyc");
+    revalidatePath("/sell");
   }
 
-  const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("nin_verified")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.nin_verified) {
-    return { error: "Your NIN is already verified" };
-  }
-
-  let result;
-  try {
-    result = await verifyNIN(nin);
-  } catch (err: any) {
-    return { error: err.message ?? "NIN verification failed. Please check the number and try again." };
-  }
-
-  const { error: updateError } = await admin
-    .from("profiles")
-    .update({
-      nin_verified: true,
-      nin_last4: nin.slice(-4),
-      nin_verified_at: new Date().toISOString(),
-    })
-    .eq("id", user.id);
-
-  if (updateError) {
-    console.error("[kyc] nin update error:", updateError);
-    return { error: "Verification succeeded but failed to save. Please try again." };
-  }
-
-  revalidatePath("/kyc");
-  revalidatePath("/sell");
-  return { success: true, firstName: result.firstName, lastName: result.lastName };
+  return result;
 }
 
 export async function submitSchoolId(schoolIdPath: string) {

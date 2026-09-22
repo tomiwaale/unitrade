@@ -10,28 +10,70 @@ const _conversationSelect = 'id, product_id, buyer_id, seller_id, created_at, '
     'buyer:profiles!conversations_buyer_id_fkey(full_name), '
     'seller:profiles!conversations_seller_id_fkey(full_name)';
 
+/// Thrown when a block stands between the two people in a conversation, with
+/// a message already fit to show the user.
+class ChatBlockedException implements Exception {
+  ChatBlockedException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Mirrors app/actions/chat.ts — direct table access, RLS already scopes
-/// conversations/messages to their two participants (006_chat.sql).
+/// conversations/messages to their two participants (006_chat.sql), and
+/// blocking and suspension on top of that (031_user_safety.sql).
 /// Notification-on-new-message is handled by the on_message_created DB
 /// trigger (016_mobile_support.sql), so sending here doesn't need to call
 /// anything extra to notify the recipient.
 class ChatRepository {
   String get _myId => supabase.auth.currentUser!.id;
 
+  Future<bool> _hasBlocked(String otherUserId) async {
+    try {
+      final rows = await supabase
+          .from('blocked_users')
+          .select('id')
+          .eq('blocker_id', _myId)
+          .eq('blocked_id', otherUserId)
+          .limit(1);
+      return (rows as List).isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<String> openConversation({
     required String productId,
     required String sellerId,
     String? initialMessage,
   }) async {
-    final row = await supabase
-        .from('conversations')
-        .upsert(
-          {'product_id': productId, 'buyer_id': _myId, 'seller_id': sellerId},
-          onConflict: 'product_id,buyer_id',
-          ignoreDuplicates: false,
-        )
-        .select('id')
-        .single();
+    final Map<String, dynamic> row;
+    try {
+      row = await supabase
+          .from('conversations')
+          .upsert(
+            {'product_id': productId, 'buyer_id': _myId, 'seller_id': sellerId},
+            onConflict: 'product_id,buyer_id',
+            ignoreDuplicates: false,
+          )
+          .select('id')
+          .single();
+    } on PostgrestException catch (e) {
+      // The conversations INSERT policy (031_user_safety.sql) refuses a pair
+      // where either side has blocked the other. Only the blocker is told
+      // which it is — telling the blocked party is what invites retaliation.
+      if (e.code == '42501') {
+        final iBlockedThem = await _hasBlocked(sellerId);
+        throw ChatBlockedException(
+          iBlockedThem
+              ? "You've blocked this seller. Unblock them to start a conversation."
+              : 'This conversation is unavailable.',
+        );
+      }
+      rethrow;
+    }
 
     final conversationId = row['id'] as String;
 

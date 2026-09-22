@@ -64,7 +64,7 @@ export default function ProposeSwapBtn({ productId, productTitle }: Props) {
     const topup = cashTopup ? parseFloat(cashTopup) : 0;
     startTransition(async () => {
       const result = await proposeSwap(productId, selectedId, note, topup > 0 ? topup : undefined);
-      if (result?.error) {
+      if (result && "error" in result) {
         toast.error(result.error);
       } else {
         toast.success("Swap offer sent!");

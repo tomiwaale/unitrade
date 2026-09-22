@@ -13,6 +13,10 @@ import '../../../core/utils/image_compression.dart';
 import '../../../core/utils/phone.dart';
 import '../../checkout/data/checkout_repository.dart';
 import '../../product/presentation/fullscreen_image_viewer.dart';
+import '../../safety/data/models.dart' as safety;
+import '../../safety/data/safety_repository.dart';
+import '../../safety/presentation/report_sheet.dart';
+import '../../safety/presentation/safety_actions.dart';
 import '../application/chat_providers.dart';
 import '../data/calling_repository.dart';
 import '../data/models.dart';
@@ -119,6 +123,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _controller.clear();
     try {
       await ref.read(chatRepositoryProvider).sendMessage(widget.conversationId, text);
+    } catch (error) {
+      // The moderation filter and a block both arrive as an opaque Postgres
+      // error. Put the message back in the box so a refusal does not also
+      // lose what they typed.
+      final explanation = describeMessageError(error);
+      _controller.text = text;
+      _showMessage(explanation ?? "Couldn't send that message. Please try again.");
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -141,8 +152,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             bytes,
             caption: caption,
           );
-    } catch (_) {
-      _showMessage("Couldn't send that photo. Please try again.");
+    } catch (error) {
+      _showMessage(describeMessageError(error) ?? "Couldn't send that photo. Please try again.");
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -151,6 +162,19 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _reportMessage(ChatMessage message) async {
+    final preview = message.hasText
+        ? '"${message.content!.trim()}"'
+        : 'Photo sent ${timeago.format(message.createdAt)}';
+
+    await showReportSheet(
+      context,
+      targetType: safety.ReportTargetType.message,
+      targetId: message.id,
+      subject: preview,
+    );
   }
 
   Future<void> _buyNow(ConversationSummary summary) async {
@@ -223,6 +247,26 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             tooltip: 'WhatsApp',
             onPressed: () => _call(whatsapp: true, otherUserId: summary?.otherUserId),
           ),
+          // Report and block have to be reachable from the conversation
+          // itself — App Store Review Guideline 1.2. Blocking hides this
+          // thread, so it pops back to the inbox rather than leaving the user
+          // on a screen that can no longer load.
+          if (summary != null)
+            SafetyMenuButton(
+              otherUserId: summary.otherUserId,
+              otherUserName: summary.otherUserName,
+              onBlocked: () {
+                // RLS stops serving this conversation the moment the block
+                // lands, but the inbox is holding a cached list that still
+                // has it.
+                ref.invalidate(conversationsProvider);
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/messages');
+                }
+              },
+            ),
         ],
       ),
       body: Column(
@@ -257,6 +301,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                     return _MessageBubble(
                       message: message,
                       isMine: message.senderId == myId,
+                      onReport: () => _reportMessage(message),
                       // One timestamp per burst rather than one per bubble.
                       showTimestamp: previous == null ||
                           previous.senderId != message.senderId ||
@@ -397,11 +442,19 @@ class _MessageBubble extends StatelessWidget {
     required this.message,
     required this.isMine,
     required this.showTimestamp,
+    this.onReport,
   });
 
   final ChatMessage message;
   final bool isMine;
   final bool showTimestamp;
+  final VoidCallback? onReport;
+
+  /// Long-press is the platform-conventional affordance for per-message
+  /// actions, and it is the only way to report an individual message. Your
+  /// own messages and ones a moderator has already removed have nothing to
+  /// report.
+  bool get _canReport => !isMine && !message.isRemoved && onReport != null;
 
   @override
   Widget build(BuildContext context) {
@@ -415,13 +468,19 @@ class _MessageBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Container(
+            GestureDetector(
+              onLongPress: _canReport ? () => _showMessageActions(context) : null,
+              child: Container(
               padding: message.imageUrl != null
                   ? const EdgeInsets.all(4)
                   : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isMine ? AppColors.primary : Colors.white,
-                border: isMine ? null : Border.all(color: AppColors.line),
+                color: message.isRemoved
+                    ? AppColors.backgroundSunken
+                    : (isMine ? AppColors.primary : Colors.white),
+                border: message.isRemoved
+                    ? Border.all(color: AppColors.line)
+                    : (isMine ? null : Border.all(color: AppColors.line)),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
@@ -458,10 +517,16 @@ class _MessageBubble extends StatelessWidget {
                           : EdgeInsets.zero,
                       child: Text(
                         message.content!,
-                        style: TextStyle(color: isMine ? AppColors.primaryForeground : AppColors.ink),
+                        style: TextStyle(
+                          color: message.isRemoved
+                              ? AppColors.inkMute
+                              : (isMine ? AppColors.primaryForeground : AppColors.ink),
+                          fontStyle: message.isRemoved ? FontStyle.italic : FontStyle.normal,
+                        ),
                       ),
                     ),
                 ],
+              ),
               ),
             ),
             if (showTimestamp || isMine)
@@ -486,6 +551,39 @@ class _MessageBubble extends StatelessWidget {
                   ],
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+extension on _MessageBubble {
+  void _showMessageActions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.flag_outlined, color: AppColors.destructive),
+              title: const Text('Report this message',
+                  style: TextStyle(color: AppColors.destructive, fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                onReport?.call();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.close, color: AppColors.inkSoft),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.of(sheetContext).pop(),
+            ),
           ],
         ),
       ),

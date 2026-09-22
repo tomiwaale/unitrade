@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, AlertTriangle, User, ShoppingBag, MessageSquare } from "lucide-react";
 import DisputeActions from "@/components/admin/dispute-actions";
+import { DISPUTE_REASONS, isDisputeReason } from "@/lib/orders";
 
 export default async function AdminDisputeDetailPage({
   params,
@@ -16,6 +17,7 @@ export default async function AdminDisputeDetailPage({
     .from("orders")
     .select(`
       id, amount, status, disputed_at, created_at, paystack_reference,
+      dispute_reason, dispute_explanation, dispute_evidence,
       buyer_id,
       profiles!buyer_id(full_name, university, phone),
       products(
@@ -33,6 +35,22 @@ export default async function AdminDisputeDetailPage({
   const seller = product?.profiles;
   const hasPayout = Boolean(seller?.recipient_code);
   const sellerPayout = Math.round(Number(order.amount) * 0.9).toLocaleString();
+
+  // dispute-evidence is a private bucket (026_dispute_details.sql) — only the
+  // uploader can read it under RLS, so mint short-lived signed URLs here.
+  const evidencePaths = ((order as any).dispute_evidence ?? []) as string[];
+  let evidenceUrls: string[] = [];
+  if (evidencePaths.length > 0) {
+    const { data: signed } = await admin.storage
+      .from("dispute-evidence")
+      .createSignedUrls(evidencePaths, 60 * 60);
+    evidenceUrls = (signed ?? [])
+      .map((entry) => entry.signedUrl)
+      .filter((url): url is string => Boolean(url));
+  }
+
+  const disputeReason = (order as any).dispute_reason;
+  const reasonLabel = isDisputeReason(disputeReason) ? DISPUTE_REASONS[disputeReason] : null;
 
   // Fetch conversation messages for this order to give admin context
   const { data: conversation } = await admin
@@ -133,6 +151,61 @@ export default async function AdminDisputeDetailPage({
           )}
         </div>
       </div>
+
+      {/* What the buyer actually claims */}
+      {(reasonLabel || (order as any).dispute_explanation || evidenceUrls.length > 0) && (
+        <div style={{
+          background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
+          borderRadius: "var(--ut-radius)", padding: "16px 18px", marginBottom: 20,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <AlertTriangle size={15} style={{ color: "#9B1C1C" }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ut-ink)" }}>Buyer&apos;s claim</span>
+          </div>
+
+          {reasonLabel && (
+            <div style={{
+              display: "inline-block", padding: "5px 12px", borderRadius: 999,
+              background: "#FDEAEA", color: "#9B1C1C", fontSize: 12, fontWeight: 700,
+              marginBottom: 12,
+            }}>
+              {reasonLabel}
+            </div>
+          )}
+
+          {(order as any).dispute_explanation && (
+            <p style={{
+              margin: "0 0 14px", fontSize: 13.5, lineHeight: 1.55,
+              color: "var(--ut-ink)", whiteSpace: "pre-wrap",
+            }}>
+              {(order as any).dispute_explanation}
+            </p>
+          )}
+
+          {evidenceUrls.length > 0 && (
+            <>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ut-ink-mute)" }}>
+                Evidence ({evidenceUrls.length})
+              </p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {evidenceUrls.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`Evidence ${i + 1}`}
+                      style={{
+                        width: 120, height: 120, objectFit: "cover",
+                        borderRadius: 8, border: "1px solid var(--ut-line)",
+                      }}
+                    />
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Recent messages for context */}
       {messages.length > 0 && (

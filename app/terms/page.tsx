@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export const metadata: Metadata = {
   title: "Terms of Use · KolejSwap",
   description: "The rules and agreements that govern your use of KolejSwap.",
 };
 
-const EFFECTIVE_DATE = "20 May 2025";
+const EFFECTIVE_DATE = "22 September 2026";
 
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section id={id} style={{ marginBottom: 40 }}>
@@ -35,7 +36,7 @@ export default function TermsPage() {
       <header className="ut-nav">
         <div className="ut-nav-inner">
           <Link href="/" className="ut-logo">
-            <span className="ut-logo-mark">u</span>
+            <LogoMark />
             <span>KolejSwap</span>
           </Link>
           <div style={{ flex: 1 }} />
@@ -89,14 +90,15 @@ export default function TermsPage() {
             ["#account", "3. Your Account"],
             ["#listings", "4. Listings & Transactions"],
             ["#prohibited", "5. Prohibited Items & Conduct"],
-            ["#escrow", "6. Escrow & Payments"],
-            ["#disputes", "7. Disputes"],
-            ["#fees", "8. Fees"],
-            ["#intellectual-property", "9. Intellectual Property"],
-            ["#liability", "10. Limitation of Liability"],
-            ["#termination", "11. Termination"],
-            ["#governing-law", "12. Governing Law"],
-            ["#contact", "13. Contact Us"],
+            ["#safety", "6. Safety, Reporting & Moderation"],
+            ["#escrow", "7. Escrow & Payments"],
+            ["#disputes", "8. Disputes"],
+            ["#fees", "9. Fees"],
+            ["#intellectual-property", "10. Intellectual Property"],
+            ["#liability", "11. Limitation of Liability"],
+            ["#termination", "12. Termination"],
+            ["#governing-law", "13. Governing Law"],
+            ["#contact", "14. Contact Us"],
           ].map(([href, label]) => (
             <div key={href} style={{ marginBottom: 4 }}>
               <a href={href} style={{ fontSize: 14, color: "var(--ut-primary)", textDecoration: "none", fontWeight: 500 }}>
@@ -208,7 +210,43 @@ export default function TermsPage() {
           ]} />
         </Section>
 
-        <Section id="escrow" title="6. Escrow & Payments">
+        <Section id="safety" title="6. Safety, Reporting & Moderation">
+          <P>
+            We have <b>no tolerance</b> for objectionable content or abusive behaviour on KolejSwap.
+            Content that breaks the rules in section 5 is removed, and the accounts behind it are
+            suspended.
+          </P>
+          <P><b>Reporting.</b> You can report any message, listing, review, or student from the
+            app — use the flag icon on a message, the &quot;Report this listing&quot; link on a
+            listing, or the menu at the top of any conversation.
+          </P>
+          <P>
+            <b>We review every report within 24 hours</b> of it being filed. If we act on your
+            report, you will be notified in the app. We may remove the content, suspend the
+            account, or both. Serious matters are reported to law enforcement.
+          </P>
+          <P><b>Blocking.</b> You can block any student at any time from the menu at the top of a
+            conversation. A blocked student cannot message you, their conversation leaves your
+            inbox, and their listings no longer appear in your browsing. They are not told that
+            you blocked them. Blocked accounts are listed under Settings, where you can unblock
+            them.
+          </P>
+          <P>
+            Blocking someone is not the same as reporting them. Blocking is private and affects
+            only you; reporting brings a moderator in. If someone broke these terms, please report
+            them so we can act for everyone.
+          </P>
+          <P><b>Automated filtering.</b> Messages are automatically checked before they are sent.
+            Messages containing sexual solicitation, hate speech, or threats are refused outright.
+            Others are allowed through but referred to a moderator for review.
+          </P>
+          <P>
+            Using KolejSwap means you agree to these rules and accept that we may remove content
+            or end your access without notice where we judge that you have broken them.
+          </P>
+        </Section>
+
+        <Section id="escrow" title="7. Escrow & Payments">
           <P>
             All payments on KolejSwap are processed through our escrow system, powered by Paystack.
             Here is how it works:
@@ -231,7 +269,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section id="disputes" title="7. Disputes">
+        <Section id="disputes" title="8. Disputes">
           <P>
             If you have a problem with a transaction, use the &quot;Raise a dispute&quot; option in your
             order page within <b>48 hours</b> of the agreed delivery time.
@@ -250,7 +288,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section id="fees" title="8. Fees">
+        <Section id="fees" title="9. Fees">
           <P>
             Listing on KolejSwap is currently <b>free</b>. We do not charge sellers a commission
             or listing fee. Paystack&apos;s standard payment processing fees (1.5% + ₦100 per
@@ -262,7 +300,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section id="intellectual-property" title="9. Intellectual Property">
+        <Section id="intellectual-property" title="10. Intellectual Property">
           <P>
             By uploading images or content to KolejSwap, you grant us a non-exclusive, royalty-free
             licence to display that content on the Platform for the purposes of operating the
@@ -274,7 +312,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section id="liability" title="10. Limitation of Liability">
+        <Section id="liability" title="11. Limitation of Liability">
           <P>
             KolejSwap is a marketplace platform and is not responsible for:
           </P>
@@ -291,7 +329,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section id="termination" title="11. Termination">
+        <Section id="termination" title="12. Termination">
           <P>
             You may close your account at any time by contacting us. Upon closure, your listings
             will be removed and your personal data deleted in accordance with our{" "}
@@ -314,7 +352,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section id="governing-law" title="12. Governing Law">
+        <Section id="governing-law" title="13. Governing Law">
           <P>
             These Terms are governed by the laws of the Federal Republic of Nigeria. Any disputes
             arising from these Terms that cannot be resolved informally shall be submitted to the
@@ -322,7 +360,7 @@ export default function TermsPage() {
           </P>
         </Section>
 
-        <Section id="contact" title="13. Contact Us">
+        <Section id="contact" title="14. Contact Us">
           <P>For any questions about these Terms, reach us at:</P>
           <div style={{
             background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",

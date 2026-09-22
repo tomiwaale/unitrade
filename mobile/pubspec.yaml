@@ -63,8 +63,12 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
-# Regenerate with `dart run flutter_launcher_icons` after replacing the
-# source images. Colors/mark match .ut-logo-mark in app/globals.css (web).
+# The master artwork is `assets/icon/Asset 6.svg` (green #0F8A4F tile, white
+# swap mark). The three PNGs below are rendered from it: icon.png is the
+# full-bleed square (iOS/Android apply their own corner mask), and
+# icon_foreground.png is the bare white mark for the Android adaptive layer.
+# The web app serves the same artwork from app/icon.svg.
+# Regenerate with `dart run flutter_launcher_icons` after replacing the PNGs.
 flutter_launcher_icons:
   android: true
   ios: true
@@ -97,6 +101,7 @@ flutter:
 
   assets:
     - .env
+    - assets/icon/logo-mark.png
 
   fonts:
     - family: Geist

@@ -161,17 +161,11 @@
   text-decoration: none; color: var(--ut-ink);
   font-weight: 600; font-size: 19px; letter-spacing: -0.02em;
 }
+/* Sizing only — the artwork lives in <LogoMark /> (components/ui/logo-mark.tsx),
+   which draws the same mark as the app icon. */
 .ut-logo-mark {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: var(--ut-primary); color: white;
-  display: grid; place-items: center;
-  font-family: var(--ut-font-mono); font-weight: 600; font-size: 16px;
-  position: relative; flex-shrink: 0;
-}
-.ut-logo-mark::after {
-  content: ""; position: absolute; right: -3px; bottom: -3px;
-  width: 10px; height: 10px; border-radius: 3px;
-  background: var(--ut-accent);
+  width: 30px; height: 30px;
+  display: block; flex-shrink: 0;
 }
 .ut-search {
   display: flex; align-items: center; gap: 10px;
@@ -474,6 +468,16 @@
 }
 .ut-chip[data-active="true"] { background: var(--ut-ink); color: white; border-color: var(--ut-ink); }
 .ut-chip:hover:not([data-active="true"]) { border-color: var(--ut-ink-soft); color: var(--ut-ink); }
+.ut-chip-select {
+  appearance: none; max-width: 200px;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23716C60' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.ut-chip-select[data-active="true"] {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
 
 /* ═══════════════════════════════════════════
    Grid + Card
@@ -581,11 +585,34 @@
 .ut-detail-media .emoji { font-size: 120px; }
 .ut-detail-thumbs { display: flex; gap: 8px; margin-top: 10px; }
 .ut-detail-thumbs .thumb {
-  flex: 1; aspect-ratio: 1;
+  flex: 1; aspect-ratio: 1; padding: 0; font: inherit;
   border-radius: 10px; background: var(--ut-bg-sunken);
   border: 1px solid var(--ut-line); position: relative; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
+.ut-detail-thumbs .thumb:not(:disabled) { cursor: pointer; }
 .ut-detail-thumbs .thumb.active { border-color: var(--ut-ink); border-width: 2px; }
+
+/* Product gallery — nav arrows + dots (shown when > 1 image) */
+.ut-gallery-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(20,19,15,0.55); color: white; border: 0;
+  display: grid; place-items: center; cursor: pointer; z-index: 2;
+  transition: background 0.15s ease;
+}
+.ut-gallery-nav:hover { background: rgba(20,19,15,0.75); }
+.ut-gallery-nav.left { left: 12px; }
+.ut-gallery-nav.right { right: 12px; }
+.ut-gallery-dots {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; z-index: 2;
+}
+.ut-gallery-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.55); transition: all 0.15s ease;
+}
+.ut-gallery-dot[data-active="true"] { background: #fff; width: 16px; border-radius: 3px; }
 .ut-detail-info h1 {
   font-family: var(--ut-font-display);
   font-size: clamp(22px, 3vw, 30px);
@@ -748,6 +775,28 @@
   flex-shrink: 0; max-width: 220px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Wraps a chat bubble so a report affordance can sit beside it without
+   disturbing the bubble's own alignment. Not to be confused with .ut-msg-row
+   above, which is a conversation row in the inbox list. */
+.ut-msg-bubble-row { display: flex; align-items: center; gap: 6px; max-width: 78%; }
+.ut-msg-bubble-row.me   { align-self: flex-end; flex-direction: row-reverse; }
+.ut-msg-bubble-row.them { align-self: flex-start; }
+.ut-msg-bubble-row .ut-bubble { max-width: 100%; align-self: auto; }
+.ut-msg-report {
+  flex-shrink: 0; width: 24px; height: 24px; border: 0; padding: 0;
+  border-radius: 999px; background: transparent; cursor: pointer;
+  color: var(--ut-ink-mute); display: grid; place-items: center;
+  opacity: 0; transition: opacity 0.15s;
+}
+.ut-msg-bubble-row:hover .ut-msg-report,
+.ut-msg-report:focus-visible { opacity: 1; }
+/* Touch devices get no hover, so the affordance is always visible there. */
+@media (hover: none) { .ut-msg-report { opacity: 0.55; } }
+.ut-bubble.removed {
+  font-style: italic; color: var(--ut-ink-mute);
+  background: var(--ut-bg-sunken); border: 1px dashed var(--ut-line);
+}
+
 .ut-msg-thread-body {
   flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 10px;
   background: var(--ut-bg); overflow-y: auto; min-height: 300px; max-height: 500px;
@@ -1368,6 +1417,17 @@
 
 /* Page content wrapper */
 .ut-admin-page { padding: 40px 48px; }
+
+/* Email marketing: composer beside a sticky email preview */
+.ut-marketing-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .ut-marketing-grid { grid-template-columns: 1fr; }
+}
 
 /* Disputes 3-col info grid */
 .ut-admin-3col {

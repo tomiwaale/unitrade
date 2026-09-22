@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export default function Error({
   error,
@@ -27,7 +28,7 @@ export default function Error({
       }}
     >
       <Link href="/" className="ut-logo" style={{ justifyContent: "center", marginBottom: 32, display: "flex" }}>
-        <span className="ut-logo-mark">u</span>
+        <LogoMark />
         <span>KolejSwap</span>
       </Link>
 

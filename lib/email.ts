@@ -4,11 +4,20 @@
 
 const FROM = `KolejSwap <${process.env.EMAIL_FROM ?? "noreply@kolejswap.com"}>`;
 
-async function sendEmail(to: string, subject: string, html: string) {
+export type OutgoingEmail = {
+  to: string;
+  subject: string;
+  html: string;
+  headers?: Record<string, string>;
+};
+
+export type SendResult = { ok: true } | { ok: false; error: string };
+
+async function sendEmail(email: OutgoingEmail): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("[email] RESEND_API_KEY not set — skipping:", subject);
-    return;
+    console.warn("[email] RESEND_API_KEY not set — skipping:", email.subject);
+    return { ok: false, error: "RESEND_API_KEY not configured" };
   }
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -17,12 +26,63 @@ async function sendEmail(to: string, subject: string, html: string) {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+    body: JSON.stringify({
+      from: FROM,
+      to: [email.to],
+      subject: email.subject,
+      html: email.html,
+      ...(email.headers ? { headers: email.headers } : {}),
+    }),
   });
 
   if (!res.ok) {
-    console.error("[email] Resend error:", await res.text());
+    const error = await res.text();
+    console.error("[email] Resend error:", error);
+    return { ok: false, error: error.slice(0, 500) };
   }
+
+  return { ok: true };
+}
+
+// Resend's batch endpoint takes up to 100 fully distinct messages per call,
+// which is what lets every campaign recipient get their own merge fields and
+// their own signed unsubscribe link without one request per person.
+// A batch is rejected as a whole, so on failure we retry the chunk one message
+// at a time — otherwise one bad address would mark 99 good ones as failed.
+export async function sendEmailBatch(emails: OutgoingEmail[]): Promise<SendResult[]> {
+  if (emails.length === 0) return [];
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[email] RESEND_API_KEY not set — skipping batch of", emails.length);
+    return emails.map(() => ({ ok: false as const, error: "RESEND_API_KEY not configured" }));
+  }
+
+  const res = await fetch("https://api.resend.com/emails/batch", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(
+      emails.map((e) => ({
+        from: FROM,
+        to: [e.to],
+        subject: e.subject,
+        html: e.html,
+        ...(e.headers ? { headers: e.headers } : {}),
+      }))
+    ),
+  });
+
+  if (res.ok) return emails.map(() => ({ ok: true as const }));
+
+  console.error("[email] Resend batch error, retrying individually:", await res.text());
+  const results: SendResult[] = [];
+  for (const email of emails) {
+    results.push(await sendEmail(email));
+  }
+  return results;
 }
 
 export async function sendAdminEmail(subject: string, html: string) {
@@ -31,16 +91,31 @@ export async function sendAdminEmail(subject: string, html: string) {
     console.warn("[email] ADMIN_EMAIL not set — skipping:", subject);
     return;
   }
-  await sendEmail(adminEmail, subject, html);
+  await sendEmail({ to: adminEmail, subject, html });
 }
 
 export async function sendUserEmail(to: string, subject: string, html: string) {
-  await sendEmail(to, subject, html);
+  await sendEmail({ to, subject, html });
 }
 
 // ── Shared template wrapper ──────────────────────────────────────────────────
-function wrap(body: string) {
+function wrap(body: string, opts?: { preheader?: string; unsubscribeUrl?: string }) {
+  // Hidden preview text — what inboxes show next to the subject line.
+  const preheader = opts?.preheader
+    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${opts.preheader}</div>`
+    : "";
+
+  // Only campaign email passes an unsubscribe URL; transactional mail must not
+  // offer an opt-out, since recipients still need order and payout notices.
+  const unsubscribe = opts?.unsubscribeUrl
+    ? `<p style="font-size:12px;color:#9ca3af;margin:8px 0 0">
+         You're receiving this because you have a KolejSwap account.
+         <a href="${opts.unsubscribeUrl}" style="color:#9ca3af">Unsubscribe from marketing emails</a>.
+       </p>`
+    : "";
+
   return `
+    ${preheader}
     <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#111">
       <div style="margin-bottom:24px">
         <span style="font-size:20px;font-weight:700;color:#16a34a">KolejSwap</span>
@@ -50,8 +125,18 @@ function wrap(body: string) {
       <p style="font-size:12px;color:#9ca3af;margin:0">
         KolejSwap — the student marketplace. Questions? Reply to this email.
       </p>
+      ${unsubscribe}
     </div>
   `;
+}
+
+// Campaign bodies come from the admin composer already rendered to HTML by
+// markdownToEmailHtml, so they only need the brand chrome and opt-out footer.
+export function wrapMarketingEmail(
+  bodyHtml: string,
+  opts: { preheader?: string; unsubscribeUrl?: string }
+) {
+  return wrap(bodyHtml, opts);
 }
 
 // ── User-facing email templates ──────────────────────────────────────────────
@@ -229,14 +314,110 @@ export function emailDisputeResolvedBuyer(opts: {
   };
 }
 
-export function emailKycApproved(opts: { name: string; sellUrl: string }) {
+// ── Account lifecycle ────────────────────────────────────────────────────────
+
+function verifiedBadge(label: string) {
+  return `<div style="display:inline-block;background:#dcfce7;color:#15803d;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;margin-bottom:16px">✓ ${label}</div>`;
+}
+
+export function emailWelcome(opts: {
+  name: string;
+  university?: string | null;
+  catalogUrl: string;
+  kycUrl: string;
+}) {
+  const firstName = opts.name?.trim().split(/\s+/)[0] || "there";
+  const campus = opts.university?.trim();
+
   return {
-    subject: "You're verified! Start selling on KolejSwap",
-    html: wrap(`
-      <h2 style="margin:0 0 8px">School ID approved ✓</h2>
-      <p style="color:#6b7280;margin:0 0 24px">Your student identity has been verified. You can now list items for sale.</p>
-      <a href="${opts.sellUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Start selling</a>
-    `),
+    subject: "Welcome to KolejSwap 👋",
+    html: wrap(
+      `
+      <h2 style="margin:0 0 8px;font-size:22px">Welcome, ${firstName}!</h2>
+      <p style="color:#6b7280;margin:0 0 24px;font-size:15px;line-height:1.6">
+        Your KolejSwap account is ready${campus ? ` — you're set up at <b>${campus}</b>` : ""}.
+        Buy, sell and swap with students on your campus, with every payment protected by escrow.
+      </p>
+
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px">
+        <tr style="background:#f9fafb">
+          <td style="padding:12px 14px;width:32px">🛍️</td>
+          <td style="padding:12px 14px;color:#374151">Browse listings from students near you</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 14px">🔒</td>
+          <td style="padding:12px 14px;color:#374151">Your money stays in escrow until you confirm delivery</td>
+        </tr>
+        <tr style="background:#f9fafb">
+          <td style="padding:12px 14px">🪪</td>
+          <td style="padding:12px 14px;color:#374151">Verify your student ID and NIN to start selling</td>
+        </tr>
+      </table>
+
+      <a href="${opts.catalogUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Start browsing</a>
+
+      <p style="font-size:14px;color:#374151;margin:24px 0 0">
+        Planning to sell? <a href="${opts.kycUrl}" style="color:#16a34a">Get verified</a> first — it takes about two minutes.
+      </p>
+    `,
+      { preheader: "Your student marketplace account is ready — here's how to get started." }
+    ),
+  };
+}
+
+export function emailKycApproved(opts: { name: string; sellUrl: string }) {
+  const firstName = opts.name?.trim().split(/\s+/)[0] || "there";
+
+  return {
+    subject: "Your school ID is verified — you can start selling",
+    html: wrap(
+      `
+      ${verifiedBadge("School ID verified")}
+      <h2 style="margin:0 0 8px;font-size:22px">You're verified, ${firstName}</h2>
+      <p style="color:#6b7280;margin:0 0 24px;font-size:15px;line-height:1.6">
+        We've reviewed and approved your student ID. Your account now carries the verified badge,
+        so buyers can see you're a real student on your campus — and you can list items for sale.
+      </p>
+      <a href="${opts.sellUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">List your first item</a>
+      <p style="font-size:14px;color:#374151;margin:24px 0 0">
+        Payments for your sales are held in escrow and paid to your bank account once the buyer confirms delivery.
+      </p>
+    `,
+      { preheader: "Your student ID was approved — your account is verified." }
+    ),
+  };
+}
+
+export function emailNinVerified(opts: {
+  name: string;
+  ninLast4: string;
+  sellUrl: string;
+  schoolIdPending: boolean;
+  kycUrl: string;
+}) {
+  const firstName = opts.name?.trim().split(/\s+/)[0] || "there";
+
+  const nextStep = opts.schoolIdPending
+    ? `<p style="font-size:14px;color:#374151;margin:0 0 24px">
+         One step left: upload your school ID so we can confirm you're a student on your campus.
+       </p>
+       <a href="${opts.kycUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Upload school ID</a>`
+    : `<a href="${opts.sellUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Start selling</a>`;
+
+  return {
+    subject: "Identity verified ✓",
+    html: wrap(
+      `
+      ${verifiedBadge("Identity verified")}
+      <h2 style="margin:0 0 8px;font-size:22px">Your identity is confirmed, ${firstName}</h2>
+      <p style="color:#6b7280;margin:0 0 24px;font-size:15px;line-height:1.6">
+        We successfully verified the NIN ending in <b>${opts.ninLast4}</b>. This keeps KolejSwap safe
+        for everyone and unlocks payouts to your bank account.
+      </p>
+      ${nextStep}
+    `,
+      { preheader: "Your NIN was verified successfully." }
+    ),
   };
 }
 
@@ -248,6 +429,31 @@ export function emailKycRejected(opts: { name: string; kycUrl: string }) {
       <p style="color:#6b7280;margin:0 0 24px">Your submission was rejected. This is usually because the image was unclear or didn't show your name and matric number.</p>
       <p style="font-size:14px;color:#374151;margin:0 0 24px">Please upload a clearer photo of the front of your valid school ID card.</p>
       <a href="${opts.kycUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Resubmit ID</a>
+    `),
+  };
+}
+
+// Sent once the account is already gone — the recipient can no longer sign
+// in, so this is a receipt, not an action prompt.
+export function emailAccountDeleted(opts: { name: string }) {
+  const firstName = opts.name?.trim().split(/\s+/)[0] || "there";
+
+  return {
+    subject: "Your KolejSwap account has been deleted",
+    html: wrap(`
+      <h2 style="margin:0 0 8px">Your account has been deleted</h2>
+      <p style="color:#6b7280;margin:0 0 24px;font-size:15px;line-height:1.6">
+        Hi ${firstName}, this confirms your KolejSwap account and personal data — profile, listings,
+        messages, saved items and notifications — have been permanently deleted, as you requested.
+      </p>
+      <p style="font-size:14px;color:#374151;margin:0 0 12px">
+        Records of past transactions are kept for up to 7 years to comply with Nigerian financial
+        regulations, with your identifying details removed from them.
+      </p>
+      <p style="font-size:14px;color:#374151;margin:0">
+        Didn't request this? Contact us immediately at
+        <a href="mailto:privacy@kolejswap.com" style="color:#16a34a">privacy@kolejswap.com</a>.
+      </p>
     `),
   };
 }

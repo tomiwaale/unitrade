@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal, ArrowLeftRight, ChevronDown, X, MapPin } from "lucide-react";
+import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
 
 type Params = Record<string, string | null>;
 
@@ -68,6 +69,7 @@ export function MobileFilterBar({
   const [pSort, setPSort] = useState<SortKey>(sortKey);
   const [pCond, setPCond] = useState(conditionFilter);
   const [pDeal, setPDeal] = useState(openToFilter);
+  const [pUni, setPUni]   = useState(universityFilter);
 
   // Lock body scroll while sheet is open
   useEffect(() => {
@@ -77,7 +79,7 @@ export function MobileFilterBar({
 
   // Count active filter badges (sort doesn't count — it's always set to something)
   const filterCount =
-    [conditionFilter, openToFilter].filter(Boolean).length +
+    [conditionFilter, openToFilter, universityFilter].filter(Boolean).length +
     (maxPrice ? 1 : 0) +
     (todayOnly ? 1 : 0);
 
@@ -89,6 +91,7 @@ export function MobileFilterBar({
     setPSort(sortKey);
     setPCond(conditionFilter);
     setPDeal(openToFilter);
+    setPUni(universityFilter);
     setOpen(true);
   }
 
@@ -97,7 +100,7 @@ export function MobileFilterBar({
     if (pSort === "max_price_5000") so.max_price = "5000";
     else if (pSort === "today")     so.today = "1";
     else if (pSort !== "recent")    so.sort = pSort;
-    router.push(buildHref(baseParams, { ...so, condition: pCond, open_to: pDeal }));
+    router.push(buildHref(baseParams, { ...so, condition: pCond, open_to: pDeal, university: pUni }));
     setOpen(false);
   }
 
@@ -105,6 +108,7 @@ export function MobileFilterBar({
     setPSort("recent");
     setPCond(null);
     setPDeal(null);
+    setPUni(null);
   }
 
   return (
@@ -242,6 +246,22 @@ export function MobileFilterBar({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* University */}
+              <div className="ut-sheet-sec">
+                <p className="ut-sheet-label">University</p>
+                <select
+                  className="ut-input"
+                  value={pUni ?? ""}
+                  onChange={(e) => setPUni(e.target.value || null)}
+                  aria-label="Filter by university"
+                >
+                  <option value="">All universities</option>
+                  {NIGERIAN_UNIVERSITIES.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
               </div>
 
             </div>

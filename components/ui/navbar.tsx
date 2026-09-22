@@ -8,6 +8,7 @@ import { Search, Bell, Bookmark, MessageSquare, ChevronDown, Plus, LayoutGrid, P
 import { logout } from "@/app/actions/auth";
 import { LOC_CACHE_KEY, LOC_CACHE_TTL, type CachedLocation } from "@/lib/hooks/use-location";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 const TABS = [
   { id: "browse",   label: "Browse",   href: "/catalog"  },
@@ -245,7 +246,7 @@ export function Navbar() {
     <header className="ut-nav">
       <div className="ut-nav-inner">
         <Link href={isLoggedIn ? "/catalog" : "/"} className="ut-logo">
-          <span className="ut-logo-mark">u</span>
+          <LogoMark />
           <span>KolejSwap</span>
         </Link>
 
@@ -489,7 +490,7 @@ export function Navbar() {
       <div className="ut-mobile-menu" role="dialog" aria-modal="true">
         <div className="ut-mobile-menu-head">
           <Link href="/" className="ut-logo" onClick={() => setMenuOpen(false)}>
-            <span className="ut-logo-mark">u</span>
+            <LogoMark />
             <span>KolejSwap</span>
           </Link>
           <button className="ut-hamburger" onClick={() => setMenuOpen(false)} aria-label="Close menu">

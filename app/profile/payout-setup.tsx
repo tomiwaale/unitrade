@@ -52,7 +52,7 @@ export default function PayoutSetupCard({ existingBank, existingAccountName, exi
   function onSubmit(data: PayoutInput) {
     startTransition(async () => {
       const result = await savePayout(data);
-      if (result?.error) {
+      if ("error" in result) {
         toast.error(result.error);
       } else {
         setSavedName(result.accountName ?? null);

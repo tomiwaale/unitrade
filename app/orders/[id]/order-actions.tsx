@@ -23,7 +23,7 @@ export default function OrderActions({
   function handleConfirm() {
     startConfirm(async () => {
       const result = await confirmOrderReceived(orderId);
-      if (result?.error) {
+      if (result && "error" in result) {
         toast.error(result.error);
       } else {
         toast.success("Receipt confirmed! Payment released to seller.");
@@ -36,7 +36,7 @@ export default function OrderActions({
   function handleDispute() {
     startDispute(async () => {
       const result = await disputeOrder(orderId);
-      if (result?.error) {
+      if (result && "error" in result) {
         toast.error(result.error);
       } else {
         toast.success("Dispute filed. We'll review and contact you shortly.");

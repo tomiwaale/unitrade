@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 
@@ -38,6 +39,24 @@ class PushService {
 
   static final _localNotifications = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+
+  /// Android notification channels. Vibration is a per-channel setting that
+  /// the OS freezes the first time the channel is created — [enableVibration]
+  /// and [vibrationPattern] on a channel (or on the per-notification details)
+  /// are ignored on every later build, so a pattern can only be changed by
+  /// shipping a new channel id. That's why orders live on their own channel
+  /// rather than a tweaked `default`: a sale gets a long double-buzz that's
+  /// felt through a pocket, while everything else keeps the stock buzz.
+  ///
+  /// [ordersChannelId] is also what supabase/functions/send-push puts in
+  /// `android.notification.channel_id` for `order` notifications, so a push
+  /// that arrives while the app is backgrounded vibrates the same way as one
+  /// that arrives in the foreground. Keep the two in sync.
+  static const defaultChannelId = 'default';
+  static const ordersChannelId = 'orders';
+
+  /// Wait 0ms, buzz 500ms, pause 250ms, buzz 500ms.
+  static final _ordersVibrationPattern = Int64List.fromList([0, 500, 250, 500]);
 
   static Future<void> init() async {
     if (_initialized) return;
@@ -92,28 +111,52 @@ class PushService {
         _navigateForData(Map<String, dynamic>.from(jsonDecode(payload) as Map));
       },
     );
-    const channel = AndroidNotificationChannel(
-      'default',
+    final android = _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await android?.createNotificationChannel(const AndroidNotificationChannel(
+      defaultChannelId,
       'General',
-      description: 'Messages, orders, swaps, and other KolejSwap activity',
+      description: 'Messages, swaps, and other KolejSwap activity',
       importance: Importance.high,
-    );
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+      enableVibration: true,
+    ));
+    await android?.createNotificationChannel(AndroidNotificationChannel(
+      ordersChannelId,
+      'Orders',
+      description: 'New orders, escrow updates, disputes, and payouts',
+      importance: Importance.high,
+      enableVibration: true,
+      vibrationPattern: _ordersVibrationPattern,
+    ));
   }
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;
 
+    final isOrder = message.data['type'] == 'order';
+
+    // iOS has no channel concept, so a foreground banner there is silent
+    // unless we ask for the buzz ourselves. Android is deliberately left
+    // out: posting to the channel below already vibrates, and doing both
+    // would buzz twice for the same notification.
+    if (Platform.isIOS && isOrder) {
+      await HapticFeedback.heavyImpact();
+    }
+
     await _localNotifications.show(
       id: notification.hashCode,
       title: notification.title,
       body: notification.body,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails('default', 'General', importance: Importance.high),
-        iOS: DarwinNotificationDetails(),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          isOrder ? ordersChannelId : defaultChannelId,
+          isOrder ? 'Orders' : 'General',
+          importance: Importance.high,
+          enableVibration: true,
+          vibrationPattern: isOrder ? _ordersVibrationPattern : null,
+        ),
+        iOS: const DarwinNotificationDetails(presentAlert: true, presentSound: true, presentBanner: true),
       ),
       payload: jsonEncode(message.data),
     );

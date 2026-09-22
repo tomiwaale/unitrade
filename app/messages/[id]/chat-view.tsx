@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { sendMessage } from "@/app/actions/chat";
-import { Send, Camera, Tag } from "lucide-react";
+import { Send, Camera, Tag, Flag } from "lucide-react";
+import ReportDialog from "@/components/safety/report-dialog";
 
 interface Message {
   id: string;
   sender_id: string;
   content: string;
   created_at: string;
+  hidden_at?: string | null;
 }
 
 interface Props {
@@ -27,6 +29,7 @@ export default function ChatView({ conversationId, currentUserId, initialMessage
   const [text, setText]           = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError]         = useState("");
+  const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,10 +92,27 @@ export default function ChatView({ conversationId, currentUserId, initialMessage
         )}
         {messages.map((msg) => {
           const isMe = msg.sender_id === currentUserId;
+          const removed = Boolean(msg.hidden_at);
           return (
-            <div key={msg.id} className={`ut-bubble ${isMe ? "me" : "them"}`}>
-              {msg.content}
-              <small>{formatTime(msg.created_at)}</small>
+            <div key={msg.id} className={`ut-msg-bubble-row ${isMe ? "me" : "them"}`}>
+              <div className={`ut-bubble ${isMe ? "me" : "them"}${removed ? " removed" : ""}`}>
+                {msg.content}
+                <small>{formatTime(msg.created_at)}</small>
+              </div>
+              {/* Only the counterpart's messages, and only ones that are still
+                  standing — there is nothing to report about a message a
+                  moderator has already taken down. */}
+              {!isMe && !removed && !msg.id.startsWith("opt-") && (
+                <button
+                  type="button"
+                  className="ut-msg-report"
+                  aria-label="Report this message"
+                  title="Report this message"
+                  onClick={() => setReportingMessage(msg)}
+                >
+                  <Flag size={12} />
+                </button>
+              )}
             </div>
           );
         })}
@@ -129,6 +149,14 @@ export default function ChatView({ conversationId, currentUserId, initialMessage
           <Send size={14} />
         </button>
       </div>
+
+      <ReportDialog
+        open={reportingMessage !== null}
+        onClose={() => setReportingMessage(null)}
+        targetType="message"
+        targetId={reportingMessage?.id ?? ""}
+        subject={`"${(reportingMessage?.content ?? "").slice(0, 120)}"`}
+      />
     </>
   );
 }

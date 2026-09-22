@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export function LandingNav() {
   const [open, setOpen] = useState(false);
@@ -17,7 +18,7 @@ export function LandingNav() {
       <header className="ut-nav">
         <div className="ut-nav-inner ut-landing-nav-inner">
           <Link href="/" className="ut-logo">
-            <span className="ut-logo-mark">u</span>
+            <LogoMark />
             <span>KolejSwap</span>
           </Link>
           <div className="ut-nav-actions ut-landing-nav-desktop">
@@ -41,7 +42,7 @@ export function LandingNav() {
         <div className="ut-mobile-menu" role="dialog" aria-modal="true">
           <div className="ut-mobile-menu-head">
             <Link href="/" className="ut-logo" onClick={() => setOpen(false)}>
-              <span className="ut-logo-mark">u</span>
+              <LogoMark />
               <span>KolejSwap</span>
             </Link>
             <button className="ut-hamburger" onClick={() => setOpen(false)} aria-label="Close menu">

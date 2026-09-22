@@ -8,6 +8,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useTransition } from "react";
 import { Mail, Lock, ArrowRight } from "lucide-react";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export default function LoginPage() {
   const [isPending, startTransition] = useTransition();
@@ -31,7 +32,7 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 460 }} className="ut-fade-up">
         {/* Logo */}
         <Link href="/" className="ut-logo" style={{ justifyContent: "center", marginBottom: 28, display: "flex" }}>
-          <span className="ut-logo-mark">u</span>
+          <LogoMark />
           <span>KolejSwap</span>
         </Link>
 

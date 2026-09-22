@@ -9,10 +9,12 @@
   `release` falls back to debug signing, which Play Store rejects — so a
   release build only ever produces something uploadable on a machine that
   has them.
-- **App icon**: generated from `assets/icon/icon.png` /
-  `assets/icon/icon_foreground.png` (matches `.ut-logo-mark` on the website —
-  green `#0F8A4F`, white "u", orange `#FF5A1F` accent) via
-  `flutter_launcher_icons` (config lives in `pubspec.yaml`). Re-run
+- **App icon**: master artwork is `assets/icon/Asset 6.svg` (green `#0F8A4F`
+  tile, white swap mark) — the same file the website serves as `app/icon.svg`.
+  The launcher icons are generated from `assets/icon/icon.png` (full-bleed
+  square; iOS and Android apply their own corner mask) and
+  `assets/icon/icon_foreground.png` (bare white mark for the Android adaptive
+  layer) via `flutter_launcher_icons` (config lives in `pubspec.yaml`). Re-run
   `dart run flutter_launcher_icons` after replacing those source images.
   `assets/icon/play-store-icon-512.png` is the separate 512×512 icon the
   Play Console store listing (not the app itself) asks you to upload.
@@ -58,10 +60,13 @@ every time; the part before is the user-visible `versionName`).
    `/privacy` page for the Privacy Policy URL, and `/account/delete` for the
    Account Deletion URL (see the account-deletion work done earlier — both
    pages already exist, they just need your production domain to be live).
-4. **Store listing** assets you'll need that aren't generated here:
-   `assets/icon/play-store-icon-512.png` (icon), a 1024×500 feature graphic,
-   and phone screenshots — these need actual product screens/marketing
-   design, not something to script from the codebase.
+4. **Store listing**: everything Play Console asks for is in `store/` —
+   `store/play-icon-512.png` (icon), `store/feature-graphic-1024x500.png`,
+   and `store/LISTING.md` (app name, short and full descriptions, category,
+   contact and policy URLs). Release notes for the "What's new" field are in
+   `store/RELEASE-NOTES.md`. Phone screenshots are the one asset not generated
+   here — they need the running app, and Play wants at least 2 (4+ to be
+   eligible for promotional placement).
 5. **Content rating** questionnaire and **target audience** (KolejSwap is for
    university students 18+ — the Privacy Policy already states this).
 6. Push notifications and the NIN verification API are optional at this

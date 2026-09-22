@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function ResetPasswordPage() {
     <div className="ut-auth-page">
       <div style={{ width: "100%", maxWidth: 460 }} className="ut-fade-up">
         <Link href="/" className="ut-logo" style={{ justifyContent: "center", marginBottom: 28, display: "flex" }}>
-          <span className="ut-logo-mark">u</span>
+          <LogoMark />
           <span>KolejSwap</span>
         </Link>
 

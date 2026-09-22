@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export const metadata: Metadata = {
   title: "Privacy Policy · KolejSwap",
   description: "How KolejSwap collects, uses, and protects your personal information.",
 };
 
-const EFFECTIVE_DATE = "20 May 2025";
+const EFFECTIVE_DATE = "31 August 2026";
 
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section id={id} style={{ marginBottom: 40 }}>
@@ -23,7 +24,7 @@ const P = ({ children }: { children: React.ReactNode }) => (
   <p style={{ margin: "0 0 12px" }}>{children}</p>
 );
 
-const Ul = ({ items }: { items: string[] }) => (
+const Ul = ({ items }: { items: React.ReactNode[] }) => (
   <ul style={{ margin: "0 0 12px", paddingLeft: 20 }}>
     {items.map((item, i) => <li key={i} style={{ marginBottom: 6 }}>{item}</li>)}
   </ul>
@@ -35,7 +36,7 @@ export default function PrivacyPage() {
       <header className="ut-nav">
         <div className="ut-nav-inner">
           <Link href="/" className="ut-logo">
-            <span className="ut-logo-mark">u</span>
+            <LogoMark />
             <span>KolejSwap</span>
           </Link>
           <div style={{ flex: 1 }} />
@@ -72,7 +73,8 @@ export default function PrivacyPage() {
         }}>
           <b>Plain-English summary:</b> We collect only what we need to run a safe campus marketplace.
           We don&apos;t sell your data. We share it only with the payment and infrastructure providers
-          that power KolejSwap. You can request deletion of your account at any time.
+          that power KolejSwap. You can delete your account and data yourself, at any time, from the
+          app or the website — see <a href="#delete-account" style={{ color: "var(--ut-primary-ink)", fontWeight: 600 }}>How to delete your account</a>.
         </div>
 
         {/* Table of contents */}
@@ -90,10 +92,11 @@ export default function PrivacyPage() {
             ["#third-parties", "4. Third-Party Services"],
             ["#data-retention", "5. Data Retention"],
             ["#your-rights", "6. Your Rights (NDPR)"],
-            ["#cookies", "7. Cookies & Tracking"],
-            ["#children", "8. Children's Privacy"],
-            ["#changes", "9. Changes to This Policy"],
-            ["#contact", "10. Contact Us"],
+            ["#delete-account", "7. How to Delete Your Account"],
+            ["#cookies", "8. Cookies & Tracking"],
+            ["#children", "9. Children's Privacy"],
+            ["#changes", "10. Changes to This Policy"],
+            ["#contact", "11. Contact Us"],
           ].map(([href, label]) => (
             <div key={href} style={{ marginBottom: 4 }}>
               <a href={href} style={{ fontSize: 14, color: "var(--ut-primary)", textDecoration: "none", fontWeight: 500 }}>
@@ -121,12 +124,14 @@ export default function PrivacyPage() {
           <P><b>Information you provide directly:</b></P>
           <Ul items={[
             "Full name and email address (used for your account and communications)",
-            "National Identification Number (NIN) — collected for identity verification only",
+            "National Identification Number (NIN) — sent to our verification partner to confirm your identity; we retain only the last 4 digits and whether verification succeeded, not the full number",
             "University name and academic status",
             "Bank account details (account number and bank name) — used to receive Paystack payouts",
             "Profile photo (optional)",
             "Listing content: titles, descriptions, prices, and product images",
-            "Messages sent through our in-app chat",
+            "Messages sent through our in-app chat, including photos you choose to share",
+            "A pickup/meetup location pin for a listing, if you choose to add one",
+            "Support tickets and messages you send to our support team",
           ]} />
 
           <P><b>Information collected automatically:</b></P>
@@ -135,13 +140,14 @@ export default function PrivacyPage() {
             "Device type, browser, and operating system",
             "Pages visited and actions taken on the platform (e.g., items viewed, searches)",
             "Session timestamps and referral sources",
+            "On the mobile app: a device push-notification token, used to deliver order, message, and dispute alerts",
           ]} />
 
           <P><b>We do not collect:</b></P>
           <Ul items={[
             "Your BVN (Bank Verification Number)",
             "Full card numbers or CVV codes — all payment data goes directly to Paystack",
-            "Precise GPS location",
+            "Your precise, real-time location — the mobile app only reads your device location when you ask it to (e.g. to sort listings by distance or pin a meetup point), and never in the background",
           ]} />
         </Section>
 
@@ -182,6 +188,16 @@ export default function PrivacyPage() {
                 role: "Web hosting and CDN. Serves the KolejSwap website globally.",
                 url: "https://vercel.com/legal/privacy-policy",
               },
+              {
+                name: "Firebase Cloud Messaging (Google)",
+                role: "Delivers push notifications to the KolejSwap mobile app using your device's push token.",
+                url: "https://firebase.google.com/support/privacy",
+              },
+              {
+                name: "Prembly",
+                role: "Verifies your National Identification Number (NIN) during identity verification. We send your NIN to Prembly for the check but only store whether it succeeded and its last 4 digits — never the full number.",
+                url: "https://prembly.com/privacy-policy",
+              },
             ].map(({ name, role }) => (
               <div key={name} style={{
                 background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",
@@ -205,10 +221,9 @@ export default function PrivacyPage() {
           </P>
           <Ul items={[
             "Active account data is retained indefinitely while your account is open",
-            "After account deletion, we remove your profile, listings, and messages within 30 days",
-            "NIN verification records are deleted within 14 days of verification completion",
-            "Transaction records (orders, escrow history) are retained for 7 years to comply with Nigerian financial regulations",
-            "Chat messages are deleted 90 days after the associated order is closed",
+            "When you delete your account, your profile, listings, chat messages, notifications, saved items, device push tokens, school ID image, and NIN/bank details are deleted immediately",
+            "Transaction records (orders, escrow history) are retained for up to 7 years to comply with Nigerian financial regulations — with your name and contact details removed from them once your account is deleted",
+            "Reviews you wrote are kept but shown as anonymous once your account is deleted; reviews about you are deleted along with your account",
           ]} />
         </Section>
 
@@ -220,19 +235,39 @@ export default function PrivacyPage() {
           <Ul items={[
             "Right to access: request a copy of the personal data we hold about you",
             "Right to rectification: correct inaccurate or incomplete data",
-            "Right to erasure: request deletion of your data (subject to legal retention requirements)",
+            "Right to erasure: delete your account and data yourself at any time (see below), or ask us to do it for you",
             "Right to restriction: ask us to limit how we process your data",
             "Right to data portability: receive your data in a machine-readable format",
             "Right to object: object to processing based on our legitimate interests",
           ]} />
           <P>
-            To exercise any of these rights, email us at{" "}
+            To exercise any of these rights — other than erasure, which you can do yourself instantly —
+            email us at{" "}
             <a href="mailto:privacy@kolejswap.com" style={{ color: "var(--ut-primary)" }}>privacy@kolejswap.com</a>.
             We will respond within 30 days.
           </P>
         </Section>
 
-        <Section id="cookies" title="7. Cookies & Tracking">
+        <Section id="delete-account" title="7. How to Delete Your Account">
+          <P>
+            You can permanently delete your KolejSwap account and personal data yourself, at any
+            time, without contacting support:
+          </P>
+          <Ul items={[
+            <>On the <b>website</b>: go to Profile → Delete account, or visit{" "}
+              <Link href="/account/delete" style={{ color: "var(--ut-primary)" }}>kolejswap.com/account/delete</Link> and sign in</>,
+            <>On the <b>mobile app</b>: go to Profile → Delete account</>,
+          ]} />
+          <P>
+            You&apos;ll need to type <b>DELETE</b> to confirm. If you have an order still in escrow
+            or under dispute, you&apos;ll be asked to resolve or cancel it first so no payment is
+            left in limbo — everything else is removed right away. See{" "}
+            <a href="#data-retention" style={{ color: "var(--ut-primary)" }}>Data Retention</a> above
+            for exactly what&apos;s deleted versus what Nigerian law requires us to keep.
+          </P>
+        </Section>
+
+        <Section id="cookies" title="8. Cookies & Tracking">
           <P>
             KolejSwap uses essential cookies only — specifically session cookies required for
             authentication and security. We do not use advertising cookies, third-party tracking
@@ -244,7 +279,7 @@ export default function PrivacyPage() {
           </P>
         </Section>
 
-        <Section id="children" title="8. Children's Privacy">
+        <Section id="children" title="9. Children's Privacy">
           <P>
             KolejSwap is intended for university students aged 18 and above. We do not knowingly
             collect personal information from anyone under 18. If we become aware that a minor has
@@ -252,7 +287,7 @@ export default function PrivacyPage() {
           </P>
         </Section>
 
-        <Section id="changes" title="9. Changes to This Policy">
+        <Section id="changes" title="10. Changes to This Policy">
           <P>
             We may update this Privacy Policy from time to time. When we make material changes,
             we will notify you by email and display a notice on the platform at least 14 days
@@ -261,7 +296,7 @@ export default function PrivacyPage() {
           </P>
         </Section>
 
-        <Section id="contact" title="10. Contact Us">
+        <Section id="contact" title="11. Contact Us">
           <P>If you have questions, concerns, or requests related to your privacy, contact us:</P>
           <div style={{
             background: "var(--ut-bg-card)", border: "1px solid var(--ut-line)",

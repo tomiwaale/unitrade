@@ -3,10 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
-import { CheckCircle2, MapPin, ArrowRight, Package, Star, Landmark } from "lucide-react";
+import { CheckCircle2, MapPin, ArrowRight, Package, Star, Landmark, Mail } from "lucide-react";
 import LocationDisplay from "@/components/ui/location-display";
 import PayoutSetupCard from "./payout-setup";
 import ProfileEdit from "./profile-edit";
+import EmailPreferences from "./email-preferences";
 import { productHref } from "@/lib/product-slug";
 
 function getInitials(name: string) {
@@ -45,7 +46,7 @@ export default async function ProfilePage() {
   // ─── Profile ───────────────────────────────────────
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, university, phone, created_at, recipient_code, nin_verified, bank_name, account_name, account_number, school_id_status")
+    .select("full_name, university, phone, created_at, recipient_code, nin_verified, bank_name, account_name, account_number, school_id_status, marketing_opt_in")
     .eq("id", user.id)
     .single();
 
@@ -238,6 +239,19 @@ export default async function ProfilePage() {
           />
         </div>
 
+        {/* ── Email preferences ── */}
+        <div style={{ marginBottom: 32 }}>
+          <div className="ut-section-head" style={{ marginTop: 0, marginBottom: 12 }}>
+            <div>
+              <span className="ut-sub">Notifications</span>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Mail size={18} /> Email preferences
+              </h2>
+            </div>
+          </div>
+          <EmailPreferences optedIn={profile.marketing_opt_in ?? true} />
+        </div>
+
         {/* ── Active listings ── */}
         <div className="ut-section-head" style={{ marginTop: 0 }}>
           <div>
@@ -420,6 +434,9 @@ export default async function ProfilePage() {
           <Link href="/support" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "9px 16px" }}>
             Contact Support
           </Link>
+          <Link href="/account/blocked" className="ut-cta ut-cta-ghost" style={{ fontSize: 13, padding: "9px 16px" }}>
+            Blocked accounts
+          </Link>
         </div>
 
         <div className="ut-ticker">
@@ -427,6 +444,24 @@ export default async function ProfilePage() {
           <span>{profile.full_name}</span>
           <span>{profile.university}</span>
           {profile.school_id_status === "approved" && <span>ID <b>verified</b></span>}
+        </div>
+
+        {/* ── Danger zone ── */}
+        <div style={{
+          marginTop: 48, borderTop: "1px solid var(--ut-line)", paddingTop: 24,
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap",
+        }}>
+          <div>
+            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "var(--ut-ink)" }}>
+              Delete your account
+            </p>
+            <p style={{ margin: 0, fontSize: 12.5, color: "var(--ut-ink-mute)" }}>
+              Permanently remove your profile, listings, and messages.
+            </p>
+          </div>
+          <Link href="/account/delete" style={{ fontSize: 13, fontWeight: 600, color: "#9B1C1C" }}>
+            Delete account →
+          </Link>
         </div>
       </main>
     </div>

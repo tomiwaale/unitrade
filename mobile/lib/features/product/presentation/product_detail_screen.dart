@@ -8,8 +8,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../catalog/data/product.dart';
 import '../../chat/application/chat_providers.dart';
+import '../../chat/data/chat_repository.dart';
 import '../../checkout/data/checkout_repository.dart';
 import '../../reviews/presentation/seller_rating_badge.dart';
+import '../../safety/data/models.dart' as safety;
+import '../../safety/presentation/report_sheet.dart';
 import '../../wishlist/application/wishlist_providers.dart';
 import '../application/product_detail_providers.dart';
 import 'product_image_gallery.dart';
@@ -61,6 +64,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             sellerId: product.sellerId,
           );
       if (mounted) context.push('/messages/$conversationId');
+    } on ChatBlockedException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -187,6 +194,27 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           icon: const Icon(Icons.chat_bubble_outline),
                           label: Text(_messaging ? 'Opening…' : 'Message seller'),
                         ),
+                      // Reporting a listing is separate from disputing an
+                      // order: this is for content that breaks the rules, not
+                      // for a deal gone wrong.
+                      if (!isOwnListing && myId != null) ...[
+                        const SizedBox(height: 18),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: () => showReportSheet(
+                              context,
+                              targetType: safety.ReportTargetType.product,
+                              targetId: product.id,
+                              subject: product.title,
+                              blockUserId: product.sellerId,
+                              blockUserName: product.sellerName ?? 'this seller',
+                            ),
+                            icon: const Icon(Icons.flag_outlined, size: 15),
+                            label: const Text('Report this listing'),
+                            style: TextButton.styleFrom(foregroundColor: AppColors.inkMute),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

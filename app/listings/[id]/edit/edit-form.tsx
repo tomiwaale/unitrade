@@ -15,6 +15,22 @@ const CATEGORIES = [
   { label: "Other", value: "other" },
 ];
 
+const CONDITIONS = [
+  { label: "New", value: "new" },
+  { label: "Like New", value: "like-new" },
+  { label: "Good", value: "good" },
+  { label: "Fair", value: "fair" },
+  { label: "Poor", value: "poor" },
+];
+
+const OPEN_TO_OPTIONS = [
+  { label: "Cash only", value: "cash-only" },
+  { label: "Cash or swap", value: "cash-or-swap" },
+  { label: "Swap only", value: "swap-only" },
+] as const;
+
+type OpenTo = "cash-only" | "cash-or-swap" | "swap-only";
+
 interface Props {
   productId: string;
   defaults: {
@@ -23,6 +39,8 @@ interface Props {
     price: number;
     imageUrl: string;
     category: string;
+    condition: string;
+    openTo: string;
     location: string;
   };
 }
@@ -30,6 +48,8 @@ interface Props {
 export default function EditListingForm({ productId, defaults }: Props) {
   const [isPending, startTransition] = useTransition();
   const [category, setCategory] = useState(defaults.category);
+  const [condition, setCondition] = useState(defaults.condition);
+  const [openTo, setOpenTo] = useState<OpenTo>((defaults.openTo as OpenTo) || "cash-only");
   const gpsLoc = useLocation();
 
   async function action(formData: FormData) {
@@ -46,6 +66,8 @@ export default function EditListingForm({ productId, defaults }: Props) {
   return (
     <form action={action} style={{ display: "grid", gap: 16 }}>
       <input type="hidden" name="category" value={category} />
+      <input type="hidden" name="condition" value={condition} />
+      <input type="hidden" name="open_to" value={openTo} />
 
       <div>
         <label className="ut-field-label">Title</label>
@@ -87,6 +109,21 @@ export default function EditListingForm({ productId, defaults }: Props) {
         </div>
 
         <div>
+          <label className="ut-field-label">Condition</label>
+          <select
+            value={condition}
+            onChange={(e) => setCondition(e.target.value)}
+            className="ut-select"
+          >
+            {CONDITIONS.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
           <label className="ut-field-label">Price (NGN)</label>
           <input
             name="price"
@@ -98,6 +135,24 @@ export default function EditListingForm({ productId, defaults }: Props) {
             className="ut-input"
             style={{ fontFamily: "var(--ut-font-mono)" }}
           />
+        </div>
+
+        <div>
+          <label className="ut-field-label">Open To</label>
+          <div style={{ display: "flex", gap: 4 }}>
+            {OPEN_TO_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className="ut-radio"
+                data-active={openTo === opt.value ? "true" : "false"}
+                onClick={() => setOpenTo(opt.value)}
+                style={{ flex: 1, padding: "10px 4px", fontSize: 11.5, minWidth: 0 }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

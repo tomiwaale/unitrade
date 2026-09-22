@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getBlockedUserIds } from "@/lib/safety";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { productHref } from "@/lib/product-slug";
@@ -130,6 +131,7 @@ import {
 } from "lucide-react";
 import WishlistBtn from "./wishlist-btn";
 import { MobileFilterBar } from "./mobile-filter-bar";
+import { UniversityFilterSelect } from "./university-filter";
 
 const CATEGORIES = [
   { label: "All",         value: null,          emoji: "🏷️", icon: LayoutGrid  },
@@ -237,18 +239,21 @@ export default async function CatalogPage({
   let firstName: string | null = null;
   let userUniversity: string | null = null;
   let wishlistIds = new Set<string>();
+  let blockedSellerIds: string[] = [];
   let isLoggedIn = false;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       isLoggedIn = true;
-      const [profileRes, wishlistRes] = await Promise.all([
+      const [profileRes, wishlistRes, blockedIds] = await Promise.all([
         supabase.from("profiles").select("full_name, university").eq("id", user.id).single(),
         supabase.from("wishlists").select("product_id").eq("user_id", user.id),
+        getBlockedUserIds(supabase, user.id),
       ]);
       firstName = profileRes.data?.full_name?.split(" ")[0] ?? null;
       userUniversity = profileRes.data?.university ?? null;
       wishlistIds = new Set(wishlistRes.data?.map((w) => w.product_id) ?? []);
+      blockedSellerIds = blockedIds;
     }
   } catch {}
 
@@ -281,6 +286,12 @@ export default async function CatalogPage({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     query = query.gte("created_at", today.toISOString());
+  }
+  // Suspended sellers are hidden by RLS (031_user_safety.sql); blocked sellers
+  // are filtered here instead, so that blocking someone mid-escrow does not
+  // make the product row vanish from the order they already paid for.
+  if (blockedSellerIds.length > 0) {
+    query = query.not("seller_id", "in", `(${blockedSellerIds.join(",")})`);
   }
 
   if (sortFilter === "price-asc")  query = query.order("price", { ascending: true });
@@ -495,20 +506,22 @@ export default async function CatalogPage({
             );
           })}
 
+          {/* University */}
+          <span style={{ width: 1, height: 18, background: "var(--ut-line)", margin: "0 2px", alignSelf: "center" }} />
+          <span className="label" style={{ margin: 0 }}>University</span>
+          <UniversityFilterSelect baseParams={baseParams} universityFilter={universityFilter} />
+
           {/* Active university badge (explicit URL filter) */}
           {universityFilter && (
-            <>
-              <span style={{ width: 1, height: 18, background: "var(--ut-line)", margin: "0 2px", alignSelf: "center" }} />
-              <Link
-                href={buildHref(baseParams, { university: null })}
-                className="ut-chip"
-                data-active="true"
-                style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-              >
-                <MapPin size={10} />
-                {universityFilter.length > 28 ? universityFilter.slice(0, 28) + "…" : universityFilter}
-              </Link>
-            </>
+            <Link
+              href={buildHref(baseParams, { university: null })}
+              className="ut-chip"
+              data-active="true"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+            >
+              <MapPin size={10} />
+              {universityFilter.length > 28 ? universityFilter.slice(0, 28) + "…" : universityFilter}
+            </Link>
           )}
 
           {/* School-first indicator (personalisation — no explicit URL filter) */}

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { applyResubscribe, applyUnsubscribe } from "@/lib/unsubscribe";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -42,6 +43,29 @@ export async function updateProfile(input: unknown) {
   if (error) {
     console.error("[profile] update error:", error);
     return { error: "Failed to update profile. Please try again." };
+  }
+
+  revalidatePath("/profile");
+  return { success: true };
+}
+
+// Marketing opt-in toggle. Writes both the profile flag and the suppression
+// list so it stays consistent with the unsubscribe link in campaign emails.
+export async function setMarketingOptIn(optIn: boolean) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user?.email) return { error: "Not logged in" };
+
+  try {
+    if (optIn) {
+      await applyResubscribe(user.email, user.id);
+    } else {
+      await applyUnsubscribe(user.email);
+    }
+  } catch (err) {
+    console.error("[profile] marketing opt-in error:", err);
+    return { error: "Failed to update your email preferences. Please try again." };
   }
 
   revalidatePath("/profile");

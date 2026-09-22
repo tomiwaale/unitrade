@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/location/location_providers.dart';
+import '../../safety/application/safety_providers.dart';
 import '../data/product.dart';
 import '../data/product_repository.dart';
 import '../data/promo_slide.dart';
@@ -52,6 +53,14 @@ final catalogProductsProvider = FutureProvider<List<Product>>((ref) async {
 
   if (university != null) {
     products = products.where((p) => p.sellerUniversity == university).toList();
+  }
+
+  // Suspended sellers are hidden by RLS (031_user_safety.sql); blocked sellers
+  // are filtered here instead, so that blocking someone mid-escrow does not
+  // make the product row vanish from an order already paid for.
+  final blockedSellerIds = await ref.watch(blockedUserIdsProvider.future);
+  if (blockedSellerIds.isNotEmpty) {
+    products = products.where((p) => !blockedSellerIds.contains(p.sellerId)).toList();
   }
 
   if (ref.watch(nearMeEnabledProvider)) {

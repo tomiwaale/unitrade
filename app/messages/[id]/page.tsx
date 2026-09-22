@@ -5,6 +5,8 @@ import { Navbar } from "@/components/ui/navbar";
 import { ChevronLeft, Tag } from "lucide-react";
 import { productHref } from "@/lib/product-slug";
 import ChatView from "./chat-view";
+import PaymentSafetyDialog from "./payment-safety-dialog";
+import SafetyMenu from "@/components/safety/safety-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +40,13 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
 
   const { data: initialMessages } = await supabase
     .from("messages")
-    .select("id, sender_id, content, created_at")
+    .select("id, sender_id, content, created_at, hidden_at")
     .eq("conversation_id", id)
     .order("created_at", { ascending: true });
 
   const other = user.id === buyerId ? conv.seller : conv.buyer;
   const otherName = (other as any)?.full_name ?? "User";
+  const otherId = (other as any)?.id as string;
 
   return (
     <div className="ut-app">
@@ -82,6 +85,14 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
               <Tag size={11} style={{ verticalAlign: "middle", marginRight: 4 }} />
               {(conv.products as any)?.title ?? "Deleted listing"}
             </Link>
+            {/* Blocking here removes this conversation from the inbox, so the
+                menu sends the user back to /messages rather than leaving them
+                on a page they can no longer load. */}
+            <SafetyMenu
+              otherUserId={otherId}
+              otherUserName={otherName}
+              redirectAfterBlock="/messages"
+            />
           </div>
 
           <ChatView
@@ -91,6 +102,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
           />
         </div>
       </main>
+      <PaymentSafetyDialog />
     </div>
   );
 }

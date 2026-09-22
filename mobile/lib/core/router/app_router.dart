@@ -20,6 +20,7 @@ import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/payout/presentation/payout_screen.dart';
 import '../../features/product/presentation/product_detail_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/safety/presentation/blocked_accounts_screen.dart';
 import '../../features/sell/edit_listing_screen.dart';
 import '../../features/sell/my_listings_screen.dart';
 import '../../features/sell/sell_screen.dart';
@@ -83,6 +84,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => ProposeSwapScreen(productId: state.pathParameters['productId']!),
       ),
       GoRoute(path: '/payout', builder: (context, state) => const PayoutScreen()),
+      GoRoute(
+        path: '/account/blocked',
+        builder: (context, state) => const BlockedAccountsScreen(),
+      ),
       GoRoute(path: '/my-listings', builder: (context, state) => const MyListingsScreen()),
       GoRoute(
         path: '/my-listings/:id/edit',

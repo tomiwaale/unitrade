@@ -119,12 +119,34 @@ crash. When testing, watch `flutter run` logs for:
 Server-side failures show up in the Edge Function logs in the dashboard, not
 on the device.
 
-## Known gap
+## Notification channels
 
-`AndroidManifest.xml` has no `com.google.firebase.messaging.default_notification_channel_id`
-meta-data. `push_service.dart` creates a high-importance channel `'default'` and
-uses it for foreground banners, but the Edge Function payload sets no
-`channel_id`, so **background** notifications land on a system fallback channel
-at default importance instead — foreground and background behave inconsistently.
-Fix is one meta-data line in the manifest pointing at the `default` channel
-(or an `android.notification.channel_id` in the function payload).
+Android decides whether a notification vibrates from its **channel**, not from
+the payload, and it freezes a channel's settings the first time that channel is
+created — editing `enableVibration` or `vibrationPattern` on an existing id is
+silently ignored on every device that has already run the app. So the app ships
+two channels, both created in `push_service.dart` on every launch:
+
+| id | name | vibration |
+| --- | --- | --- |
+| `default` | General | stock buzz |
+| `orders` | Orders | double-buzz, 500ms / 250ms pause / 500ms |
+
+`AndroidManifest.xml` points FCM's `default_notification_channel_id` at
+`@string/default_notification_channel_id` (`default`) as the fallback, and
+`send-push` overrides it per notification with `android.notification.channel_id`
+— `order` rows go to `orders`, everything else to `default`. This is what makes
+a seller's phone buzz when a sale lands while the app is backgrounded: the OS
+builds that notification itself and never runs any Dart, so the channel is the
+only lever. In the foreground `_showForegroundNotification` posts to the same
+channel, so both paths feel identical.
+
+iOS has no channels. The payload carries `apns.payload.aps.sound = "default"`,
+which is what gets the system to buzz on an order in the background, and the
+foreground handler fires `HapticFeedback.heavyImpact()` directly (Android is
+excluded there — the channel already vibrates, and doing both buzzes twice).
+
+**Changing any of this needs both sides shipped**: redeploy `send-push` from the
+repo root, and rebuild the app so the new channel exists before a push names it.
+A `channel_id` referring to a channel the install has never created doesn't get
+posted at all on Android 8+.

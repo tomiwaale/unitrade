@@ -3,13 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
-  MapPin, ChevronLeft, Shield, Lock, ArrowLeftRight, Star,
+  MapPin, ChevronLeft, Shield, Lock, ArrowLeftRight, Star, AlertTriangle,
 } from "lucide-react";
 import BuyButton from "./buy-button";
 import MessageSellerBtn from "./message-seller-btn";
 import ProposeSwapBtn from "./propose-swap-btn";
+import { ProductGallery } from "./product-gallery";
 import WishlistBtn from "@/app/catalog/wishlist-btn";
 import { Navbar } from "@/components/ui/navbar";
+import ReportButton from "@/components/safety/report-button";
 import { parseProductId, productSlug, productHref, isRawUuid } from "@/lib/product-slug";
 
 export const revalidate = 3600;
@@ -198,7 +200,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const isActive    = product.status === "active";
   const isService   = product.listing_type === "service";
   const acceptsSwap = product.open_to && product.open_to !== "cash-only";
-  const hasImages   = product.images && product.images.length > 0;
   const bgColor     = SWATCH_BG[product.category] ?? "#EFEBE3";
   const emoji       = CAT_EMOJI[product.category as string] ?? "📦";
 
@@ -210,12 +211,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const meetupLocation   = product.location ? product.location.split(",")[0] : null;
   const catLabel         = CAT_LABELS[product.category] ?? product.category ?? "";
   const conditionLabel   = product.condition ? (CONDITION_LABELS[product.condition] ?? product.condition) : null;
-
-  // Always show 4 thumbnail slots
-  const thumbImages: (string | null)[] = [
-    ...(product.images ?? []).slice(0, 4),
-    ...Array(Math.max(0, 4 - (product.images?.length ?? 0))).fill(null),
-  ];
 
   const appUrl =
     process.env.APP_URL?.startsWith("http")
@@ -279,16 +274,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
         <div className="ut-detail">
           {/* ── Left: media ── */}
-          <div>
-            <div className="ut-detail-media" style={{ background: hasImages ? undefined : bgColor }}>
-              {hasImages ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.images[0]} alt={product.title} />
-              ) : (
-                <span className="emoji" aria-hidden>{emoji}</span>
-              )}
-
-              {/* Top-left badge */}
+          <ProductGallery
+            images={product.images ?? []}
+            title={product.title}
+            bgColor={bgColor}
+            emoji={emoji}
+            badges={
               <div className="ut-card-badges" style={{ top: 16, left: 16, right: 16 }}>
                 <div>
                   {acceptsSwap && isActive && (
@@ -310,24 +301,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                   size={15}
                 />
               </div>
-            </div>
-
-            {/* Thumbnail strip — always 4 slots */}
-            <div className="ut-detail-thumbs" style={{ marginTop: 12 }}>
-              {thumbImages.map((img, i) => (
-                <div
-                  key={i}
-                  className={`thumb${i === 0 ? " active" : ""}`}
-                  style={{ background: img ? undefined : "var(--ut-bg-sunken)" }}
-                >
-                  {img && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+            }
+          />
 
           {/* ── Right: info ── */}
           <div className="ut-detail-info">
@@ -480,6 +455,34 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 </span>
               </div>
             </div>
+
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10,
+              padding: "10px 12px", borderRadius: 10,
+              background: "color-mix(in srgb, var(--ut-yellow, #ca8a04) 12%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--ut-yellow, #ca8a04) 30%, transparent)",
+              fontSize: 12, lineHeight: 1.5, color: "var(--ut-ink-soft)",
+            }}>
+              <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1, color: "var(--ut-yellow, #ca8a04)" }} />
+              <span>
+                Always pay through UniTrade. If you transact with a seller outside the app,
+                we can&apos;t protect your payment or step in if something goes wrong.
+              </span>
+            </div>
+
+            {/* Reporting a listing is separate from disputing an order: this is
+                for content that breaks the rules, not for a deal gone wrong. */}
+            {user && !isOwner && (
+              <div style={{ marginTop: 14, textAlign: "center" }}>
+                <ReportButton
+                  targetType="product"
+                  targetId={product.id}
+                  subject={product.title}
+                  blockUserId={product.seller_id}
+                  blockUserName={sellerFirstName}
+                />
+              </div>
+            )}
           </div>
         </div>
 

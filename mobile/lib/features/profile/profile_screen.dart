@@ -210,6 +210,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/notifications'),
             ),
+            ListTile(
+              leading: const Icon(Icons.block_outlined),
+              title: const Text('Blocked accounts'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/account/blocked'),
+            ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),

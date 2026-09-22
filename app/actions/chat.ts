@@ -2,8 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { describeMessageError } from "@/lib/safety";
 import { redirect } from "next/navigation";
-import { notify } from "@/lib/notifications";
 
 export async function openConversation(
   productId: string,
@@ -52,7 +52,24 @@ export async function openConversation(
     if (existing) convId = existing.id;
   }
 
-  if (!convId) return { error: "Could not open conversation." };
+  if (!convId) {
+    // The conversations INSERT policy (031_user_safety.sql) refuses a pair
+    // where either side has blocked the other, and the SELECT policy hides
+    // the existing row from the blocker, so both lookups above come back
+    // empty. Saying so plainly beats a generic failure.
+    const { data: blocked } = await supabase
+      .from("blocked_users")
+      .select("id")
+      .eq("blocker_id", user.id)
+      .eq("blocked_id", sellerId)
+      .maybeSingle();
+
+    if (blocked) {
+      return { error: "You've blocked this seller. Unblock them to start a conversation." };
+    }
+
+    return { error: "Could not open conversation." };
+  }
   redirect(`/messages/${convId}`);
 }
 
@@ -73,7 +90,7 @@ export async function sendMessage(conversationId: string, content: string) {
   // Verify the user is actually a participant — don't rely solely on RLS
   const { data: conv } = await supabase
     .from("conversations")
-    .select("buyer_id, seller_id, products(title)")
+    .select("buyer_id, seller_id")
     .eq("id", conversationId)
     .single();
 
@@ -81,23 +98,20 @@ export async function sendMessage(conversationId: string, content: string) {
     return { error: "You are not a participant in this conversation." };
   }
 
+  // Notification creation is handled by the on_message_created DB trigger
+  // (016_mobile_support.sql) so it fires regardless of which client — web
+  // or mobile — inserted the message.
   const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
     sender_id: user.id,
     content: trimmed,
   });
 
-  if (error) return { error: "Failed to send message." };
-
-  const recipientId = user.id === conv.buyer_id ? conv.seller_id : conv.buyer_id;
-  const productTitle = (conv as any).products?.title as string | undefined;
-  void notify(
-    recipientId,
-    "message",
-    "New message",
-    productTitle ? `About "${productTitle}"` : undefined,
-    conversationId,
-  );
+  if (error) {
+    // The moderation filter and a block both surface here as an opaque
+    // Postgres error — translate before this reaches the user.
+    return { error: describeMessageError(error) ?? "Failed to send message." };
+  }
 
   return { success: true };
 }

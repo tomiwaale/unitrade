@@ -114,6 +114,21 @@ async function getAccessToken(): Promise<string> {
   return access_token;
 }
 
+// Android notification channels, mirroring the ones PushService creates in
+// mobile/lib/core/push/push_service.dart. A channel owns the vibration
+// pattern, so routing order notifications to "orders" is what makes a
+// seller's phone buzz when a sale lands while the app is backgrounded — the
+// OS builds that notification itself and never runs any Dart. Without a
+// channel_id the message falls back to the manifest's
+// default_notification_channel_id ("default"), which is the right home for
+// everything else.
+//
+// The id has to name a channel the app has already created, so keep this in
+// sync with push_service.dart.
+function channelIdFor(type: string): string {
+  return type === "order" ? "orders" : "default";
+}
+
 async function sendToToken(accessToken: string, token: string, notification: NotificationRow) {
   const response = await fetch(
     `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`,
@@ -133,6 +148,19 @@ async function sendToToken(accessToken: string, token: string, notification: Not
           data: {
             type: notification.type,
             related_id: notification.related_id ?? "",
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channel_id: channelIdFor(notification.type),
+              // Only consulted below Android 8, where there are no channels
+              // to carry these; from 8 up the channel's own settings win.
+              notification_priority: "PRIORITY_HIGH",
+              default_vibrate_timings: true,
+            },
+          },
+          apns: {
+            payload: { aps: { sound: "default" } },
           },
         },
       }),

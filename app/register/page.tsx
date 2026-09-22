@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useTransition } from "react";
 import { ArrowRight, User, Mail, Lock, Building, Phone } from "lucide-react";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -50,7 +51,7 @@ export default function RegisterPage() {
     <div className="ut-auth-page" style={{ padding: "32px 24px", alignItems: "flex-start" }}>
       <div style={{ width: "100%", maxWidth: 580, margin: "0 auto" }} className="ut-fade-up">
         <Link href="/" className="ut-logo" style={{ justifyContent: "center", marginBottom: 28, display: "flex" }}>
-          <span className="ut-logo-mark">u</span>
+          <LogoMark />
           <span>KolejSwap</span>
         </Link>
 
