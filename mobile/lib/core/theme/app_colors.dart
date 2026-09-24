@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Design tokens ported from the web app's "Campus Green" theme
-/// (app/globals.css and unitrade/project/app.jsx THEMES.campus).
+/// (app/globals.css and kolejswap/project/app.jsx THEMES.campus).
 /// Keep these in sync if the web palette changes.
 class AppColors {
   AppColors._();

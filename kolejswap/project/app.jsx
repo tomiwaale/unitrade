@@ -1,4 +1,4 @@
-// Unitrade — root app
+// KolejSwap — root app
 const { useState: useStateApp, useEffect: useEffectApp, useMemo: useMemoApp } = React;
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -192,7 +192,7 @@ const App = () => {
         <div className="ut-nav-inner">
           <a href="#" className="ut-logo" onClick={(e) => { e.preventDefault(); setOpened(null); setState({ ...state, tab: "browse" }); }}>
             <span className="ut-logo-mark">u</span>
-            <span>Unitrade</span>
+            <span>KolejSwap</span>
           </a>
           <div className="ut-search">
             <Icons.Search size={16} style={{ color: "var(--ut-ink-mute)" }}/>

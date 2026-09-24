@@ -8,11 +8,15 @@ import {
 import BuyButton from "./buy-button";
 import MessageSellerBtn from "./message-seller-btn";
 import ProposeSwapBtn from "./propose-swap-btn";
+import MakeOfferBtn from "./make-offer-btn";
+import { fetchRedeemableOffer, type PriceOffer } from "@/lib/offers";
 import { ProductGallery } from "./product-gallery";
 import WishlistBtn from "@/app/catalog/wishlist-btn";
 import { Navbar } from "@/components/ui/navbar";
 import ReportButton from "@/components/safety/report-button";
 import { parseProductId, productSlug, productHref, isRawUuid } from "@/lib/product-slug";
+import { JsonLd } from "@/components/seo/json-ld";
+import { DEFAULT_OG_IMAGES } from "@/lib/seo";
 
 export const revalidate = 3600;
 
@@ -55,7 +59,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { id: param } = await params;
   const productId = parseProductId(param);
-  if (!productId) return { title: "Listing not found · KolejSwap" };
+  if (!productId) return { title: "Listing not found" };
 
   const supabase = await createClient();
   const { data: product } = await supabase
@@ -64,16 +68,18 @@ export async function generateMetadata(
     .eq("id", productId)
     .single();
 
-  if (!product) return { title: "Listing not found · KolejSwap" };
+  if (!product) return { title: "Listing not found" };
 
   const appUrl =
     process.env.APP_URL?.startsWith("http")
       ? process.env.APP_URL
       : "https://kolejswap.com";
 
-  const university  = (product.profiles as { university?: string } | null)?.university ?? "";
+  // Trimmed: stored university names sometimes carry trailing whitespace,
+  // which would show up as a double space in the <title>.
+  const university  = ((product.profiles as { university?: string } | null)?.university ?? "").trim();
   const uniSuffix   = university ? ` · ${university}` : "";
-  const title       = `${product.title} — ₦${Number(product.price).toLocaleString()}${uniSuffix} | KolejSwap`;
+  const title       = `${product.title} — ₦${Number(product.price).toLocaleString()}${uniSuffix}`;
   const baseDesc    = product.description?.slice(0, 120) ?? "";
   const ellipsis    = (product.description?.length ?? 0) > 120 ? "…" : "";
   const description = `${baseDesc}${ellipsis}${university ? ` Listed by a student at ${university}.` : ""} Buy safely with escrow on KolejSwap.`;
@@ -95,18 +101,22 @@ export async function generateMetadata(
     ].filter(Boolean),
     alternates: { canonical },
     openGraph: {
-      title,
+      // The document title gets " | KolejSwap" from the root layout template;
+      // og:title does not, so the brand is added back here for link previews.
+      title: `${title} | KolejSwap`,
       description,
       url: canonical,
       siteName: "KolejSwap",
-      ...(image ? { images: [{ url: image, width: 1200, height: 630, alt: product.title }] } : {}),
+      images: image
+        ? [{ url: image, width: 1200, height: 630, alt: product.title }]
+        : DEFAULT_OG_IMAGES,
       type: "website",
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
-      title,
+      card: "summary_large_image",
+      title: `${title} | KolejSwap`,
       description,
-      ...(image ? { images: [image] } : {}),
+      images: image ? [image] : DEFAULT_OG_IMAGES.map((i) => i.url),
     },
   };
 }
@@ -167,6 +177,10 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   // Unread messages + wishlist state — only needed when logged in
   let unreadCount = 0;
   let isWishlisted = false;
+  // The buyer's live agreed price, and any offer of theirs still awaiting a
+  // reply. Presentation only: checkout re-resolves the offer server-side.
+  let agreedOffer: PriceOffer | null = null;
+  let pendingOfferConversationId: string | null = null;
   if (user) {
     const [convRes, wishRes] = await Promise.all([
       supabase
@@ -185,6 +199,21 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
     isWishlisted = !!wishRes.data;
 
+    if (user.id !== product.seller_id) {
+      agreedOffer = await fetchRedeemableOffer(supabase, product.id, user.id);
+
+      if (!agreedOffer) {
+        const { data: pending } = await supabase
+          .from("price_offers")
+          .select("conversation_id")
+          .eq("product_id", product.id)
+          .eq("buyer_id", user.id)
+          .eq("status", "pending")
+          .maybeSingle();
+        pendingOfferConversationId = (pending?.conversation_id as string | null) ?? null;
+      }
+    }
+
     if (convRes.data) {
       const { count } = await supabase
         .from("messages")
@@ -200,6 +229,10 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const isActive    = product.status === "active";
   const isService   = product.listing_type === "service";
   const acceptsSwap = product.open_to && product.open_to !== "cash-only";
+  // Sellers opt out per listing (033_price_offers.sql); a swap-only listing has
+  // no cash price to haggle over, and a service has no fixed unit.
+  const acceptsOffers =
+    product.allow_offers !== false && product.open_to !== "swap-only" && !isService;
   const bgColor     = SWATCH_BG[product.category] ?? "#EFEBE3";
   const emoji       = CAT_EMOJI[product.category as string] ?? "📦";
 
@@ -257,14 +290,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
+      <JsonLd data={[jsonLd, breadcrumbJsonLd]} />
     <div className="ut-app">
       <Navbar />
       <main className="ut-main">
@@ -390,7 +416,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {!isService && <BuyButton productId={product.id} price={product.price} />}
+                    {!isService && (
+                      <BuyButton
+                        productId={product.id}
+                        price={product.price}
+                        agreedOffer={agreedOffer ? { id: agreedOffer.id, amount: Number(agreedOffer.amount) } : null}
+                      />
+                    )}
                     {user ? (
                       <MessageSellerBtn
                         productId={product.id}
@@ -409,6 +441,18 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                       </div>
                     )}
                   </div>
+
+                  {/* Hidden once a price is agreed — the Buy button already
+                      names it, and re-opening the negotiation would only
+                      replace the deal the buyer just won. */}
+                  {acceptsOffers && user && !agreedOffer && (
+                    <MakeOfferBtn
+                      productId={product.id}
+                      productTitle={product.title}
+                      price={Number(product.price)}
+                      pendingConversationId={pendingOfferConversationId}
+                    />
+                  )}
 
                   {acceptsSwap && !isService && user && (
                     <ProposeSwapBtn
@@ -465,7 +509,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             }}>
               <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1, color: "var(--ut-yellow, #ca8a04)" }} />
               <span>
-                Always pay through UniTrade. If you transact with a seller outside the app,
+                Always pay through KolejSwap. If you transact with a seller outside the app,
                 we can&apos;t protect your payment or step in if something goes wrong.
               </span>
             </div>

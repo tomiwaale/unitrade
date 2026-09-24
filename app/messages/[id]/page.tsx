@@ -5,6 +5,7 @@ import { Navbar } from "@/components/ui/navbar";
 import { ChevronLeft, Tag } from "lucide-react";
 import { productHref } from "@/lib/product-slug";
 import ChatView from "./chat-view";
+import { fetchConversationOffers } from "@/lib/offers";
 import PaymentSafetyDialog from "./payment-safety-dialog";
 import SafetyMenu from "@/components/safety/safety-menu";
 
@@ -25,7 +26,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
     .from("conversations")
     .select(`
       id,
-      products(id, title, listing_type),
+      products(id, title, listing_type, price, allow_offers, status),
       buyer:profiles!conversations_buyer_id_fkey(id, full_name),
       seller:profiles!conversations_seller_id_fkey(id, full_name)
     `)
@@ -40,13 +41,32 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
 
   const { data: initialMessages } = await supabase
     .from("messages")
-    .select("id, sender_id, content, created_at, hidden_at")
+    .select("id, sender_id, content, created_at, hidden_at, offer_id, offer_event")
     .eq("conversation_id", id)
     .order("created_at", { ascending: true });
+
+  // Offer rows are fetched alongside the thread rather than joined onto it: one
+  // offer spans several messages, and the card renders from the offer's live
+  // status rather than from whatever was true when the bubble was posted.
+  const initialOffers = await fetchConversationOffers(supabase, id);
 
   const other = user.id === buyerId ? conv.seller : conv.buyer;
   const otherName = (other as any)?.full_name ?? "User";
   const otherId = (other as any)?.id as string;
+
+  const listing = conv.products as any;
+  // A service has no fixed unit to haggle over, and a deleted listing has
+  // nothing left to negotiate; both simply leave the offer affordances out.
+  const product =
+    listing?.id && listing?.listing_type !== "service"
+      ? {
+          id: listing.id as string,
+          title: (listing.title as string) ?? "This listing",
+          price: Number(listing.price ?? 0),
+          allowOffers: listing.allow_offers !== false,
+          isActive: listing.status === "active",
+        }
+      : null;
 
   return (
     <div className="ut-app">
@@ -99,6 +119,9 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
             conversationId={id}
             currentUserId={user.id}
             initialMessages={initialMessages ?? []}
+            initialOffers={initialOffers}
+            product={product}
+            isBuyer={user.id === buyerId}
           />
         </div>
       </main>

@@ -66,6 +66,7 @@ class _EditFormState extends ConsumerState<_EditForm> {
   late String? _condition = _conditionValues.contains(widget.product.condition) ? widget.product.condition : null;
   late String _openTo =
       _openToValues.contains(widget.product.openTo) ? widget.product.openTo! : 'cash-only';
+  late bool _allowOffers = widget.product.allowOffers;
   late double? _latitude = widget.product.latitude;
   late double? _longitude = widget.product.longitude;
   late final List<String> _existingImageUrls = [...widget.product.images];
@@ -143,6 +144,7 @@ class _EditFormState extends ConsumerState<_EditForm> {
         category: _category!,
         condition: _condition,
         openTo: _openTo,
+        allowOffers: _allowOffers,
         location: _locationController.text.trim(),
         latitude: _latitude,
         longitude: _longitude,
@@ -307,6 +309,21 @@ class _EditFormState extends ConsumerState<_EditForm> {
               ],
               onChanged: (v) => setState(() => _openTo = v ?? 'cash-only'),
             ),
+            // Turning this off stops new offers; a price already agreed still
+            // stands, since the buyer was told it would.
+            if (_openTo != 'swap-only') ...[
+              const SizedBox(height: 6),
+              SwitchListTile(
+                value: _allowOffers,
+                onChanged: (v) => setState(() => _allowOffers = v),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Accept offers', style: TextStyle(fontSize: 14.5)),
+                subtitle: const Text(
+                  'Buyers can propose a price and you can accept, decline or counter.',
+                  style: TextStyle(fontSize: 12, color: AppColors.inkMute),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             TextFormField(
               controller: _locationController,

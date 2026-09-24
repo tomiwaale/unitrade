@@ -4,9 +4,10 @@ import { useTransition, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createProduct } from "@/app/actions/product";
 import { toast } from "sonner";
-import { Check, MapPin, ArrowLeftRight, Shield, FileText, X } from "lucide-react";
+import { Check, MapPin, ArrowLeftRight, Shield, FileText, X, Info, TrendingUp, AlertTriangle } from "lucide-react";
 import ImageUploader from "@/components/image-uploader";
 import { NIGERIAN_UNIVERSITIES } from "@/lib/nigerian-universities";
+import { priceGuidance, type PriceGuidance, type PriceStat, type PriceTone } from "@/lib/price-stats";
 
 const CATEGORIES = [
   { label: "Textbooks",   value: "textbooks" },
@@ -36,6 +37,9 @@ type OpenTo = "cash-only" | "cash-or-swap" | "swap-only";
 interface Props {
   defaultLocation: string;
   sellerName: string;
+  /** Empty until a bucket clears the sample floor in price_stats — the nudge
+   *  simply does not render, rather than guessing at a market. */
+  priceStats: PriceStat[];
 }
 
 // ── Draft persistence ─────────────────────────────────────────────────────────
@@ -51,6 +55,8 @@ type DraftData = {
   location: string;
   description: string;
   imageUrls: string[];
+  // Optional: drafts saved before offers existed have no value here.
+  allowOffers?: boolean;
 };
 
 function readDraft(): DraftData | null {
@@ -76,12 +82,15 @@ function clearDraft() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SellForm({ defaultLocation, sellerName }: Props) {
+export default function SellForm({ defaultLocation, sellerName, priceStats }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [category, setCategory] = useState("");
   const [condition, setCondition] = useState("good");
   const [openTo, setOpenTo] = useState<OpenTo>("cash-or-swap");
+  // Default on, matching the column default (033_price_offers.sql). A seller
+  // who wants their price treated as firm turns it off here.
+  const [allowOffers, setAllowOffers] = useState(true);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [location, setLocation] = useState(defaultLocation);
@@ -101,6 +110,7 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
     if (draft.category) setCategory(draft.category);
     if (draft.condition) setCondition(draft.condition);
     if (draft.openTo) setOpenTo(draft.openTo as OpenTo);
+    if (typeof draft.allowOffers === "boolean") setAllowOffers(draft.allowOffers);
     if (draft.location) setLocation(draft.location);
     if (draft.description) setDescription(draft.description);
     if (draft.imageUrls?.length) {
@@ -116,10 +126,30 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
     clearTimeout(autoSaveTimer.current);
     if (!title && !price && !category && !description) return;
     autoSaveTimer.current = window.setTimeout(() => {
-      writeDraft({ title, price, category, condition, openTo, location, description, imageUrls });
+      writeDraft({ title, price, category, condition, openTo, location, description, imageUrls, allowOffers });
     }, 800);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [title, price, category, condition, openTo, location, description, imageUrls]);
+  }, [title, price, category, condition, openTo, location, description, imageUrls, allowOffers]);
+
+  // Settle before judging: typing "8000" passes through 8, 80 and 800, and a
+  // nudge that flashes "1,125x the typical price" mid-keystroke reads as broken.
+  const [settledPrice, setSettledPrice] = useState("");
+  useEffect(() => {
+    const t = window.setTimeout(() => setSettledPrice(price), 400);
+    return () => clearTimeout(t);
+  }, [price]);
+
+  // Falls back to the raw column value so a legacy category still reads sanely.
+  const categoryLabel =
+    CATEGORIES.find((c) => c.value === category)?.label ??
+    (category ? category[0].toUpperCase() + category.slice(1) : "");
+  const guidance = priceGuidance(
+    priceStats,
+    category,
+    condition,
+    settledPrice ? Number(settledPrice) : null,
+    categoryLabel,
+  );
 
   const previewImageUrl = imageUrls[0] ?? "";
 
@@ -138,7 +168,7 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
   const showSwap = openTo !== "cash-only";
 
   function handleSaveDraft() {
-    writeDraft({ title, price, category, condition, openTo, location, description, imageUrls });
+    writeDraft({ title, price, category, condition, openTo, location, description, imageUrls, allowOffers });
     toast.success("Draft saved — come back any time to finish your listing");
   }
 
@@ -149,6 +179,7 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
     setCategory("");
     setCondition("good");
     setOpenTo("cash-or-swap");
+    setAllowOffers(true);
     setLocation(defaultLocation);
     setDescription("");
     setDraftImageUrls([]);
@@ -212,6 +243,7 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
           <input type="hidden" name="category" value={category} />
           <input type="hidden" name="condition" value={condition} />
           <input type="hidden" name="open_to" value={openTo} />
+          <input type="hidden" name="allow_offers" value={allowOffers ? "true" : "false"} />
 
           <div className="ut-form-grid">
             {/* Photo upload */}
@@ -300,6 +332,46 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
                 ))}
               </div>
             </div>
+
+            {/* Haggling is expected on campus, so this is a way to say "firm"
+                rather than a way to opt in. Hidden for swap-only listings,
+                which have no cash price to negotiate. */}
+            {openTo !== "swap-only" && (
+              <div className="ut-form-field full">
+                <label
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
+                    padding: "11px 13px", borderRadius: 11,
+                    border: `1.5px solid ${allowOffers ? "var(--ut-primary)" : "var(--ut-line)"}`,
+                    background: allowOffers ? "var(--ut-primary-tint)" : "var(--ut-bg-card)",
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={allowOffers}
+                    onChange={(e) => setAllowOffers(e.target.checked)}
+                    style={{ marginTop: 2, accentColor: "var(--ut-primary)", width: 16, height: 16, flexShrink: 0 }}
+                  />
+                  <span>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ut-ink)" }}>
+                      Accept offers
+                    </span>
+                    <span style={{ display: "block", marginTop: 2, fontSize: 12, color: "var(--ut-ink-mute)" }}>
+                      Buyers can propose a price and you can accept, decline or counter.
+                      Turn this off to list at a firm price.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* Price guidance — absent until price_stats has enough comparables */}
+            {guidance && (
+              <div className="ut-form-field full">
+                <PriceNudge guidance={guidance} />
+              </div>
+            )}
 
             {/* Description */}
             <div className="ut-form-field full">
@@ -432,5 +504,51 @@ export default function SellForm({ defaultLocation, sellerName }: Props) {
         </div>
       </div>
     </>
+  );
+}
+
+// ── Price nudge ───────────────────────────────────────────────────────────────
+// Advisory only. Nothing here blocks publishing: a hard cap would push the deal
+// into DMs and out of escrow, which costs the buyer the protection and us the
+// fee. Most overpricing is a seller who has never seen the going rate.
+
+const NUDGE_TONES: Record<PriceTone, { token: string; Icon: typeof Info }> = {
+  info: { token: "--ut-ocean",   Icon: Info },
+  good: { token: "--ut-primary", Icon: Check },
+  warn: { token: "--ut-yellow",  Icon: TrendingUp },
+  high: { token: "--ut-rose",    Icon: AlertTriangle },
+};
+
+function PriceNudge({ guidance }: { guidance: PriceGuidance }) {
+  const { token, Icon } = NUDGE_TONES[guidance.tone];
+  const color = `var(${token})`;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        display: "flex", alignItems: "flex-start", gap: 10,
+        padding: "10px 13px",
+        background: `color-mix(in srgb, ${color} 12%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+        borderRadius: "var(--ut-radius)",
+      }}
+    >
+      <Icon size={15} style={{ flexShrink: 0, marginTop: 2, color }} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ut-ink)" }}>
+          {guidance.headline}
+        </div>
+        {guidance.detail && (
+          <div style={{ fontSize: 12.5, color: "var(--ut-ink-soft)", marginTop: 2, lineHeight: 1.45 }}>
+            {guidance.detail}
+          </div>
+        )}
+        <div style={{ fontSize: 11.5, color: "var(--ut-ink-mute)", marginTop: 4 }}>
+          {guidance.basis}
+        </div>
+      </div>
+    </div>
   );
 }

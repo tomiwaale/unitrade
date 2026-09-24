@@ -129,6 +129,9 @@ class _ListingFormState extends ConsumerState<_ListingForm> {
   String? _category;
   String? _condition;
   String _openTo = 'cash-only';
+  // Default on, matching the column default (033_price_offers.sql): haggling is
+  // the norm on campus, so this is a way to say "firm" rather than to opt in.
+  bool _allowOffers = true;
   double? _latitude;
   double? _longitude;
   bool _locating = false;
@@ -202,6 +205,7 @@ class _ListingFormState extends ConsumerState<_ListingForm> {
         category: _category!,
         condition: _condition,
         openTo: _openTo,
+        allowOffers: _allowOffers,
         location: _locationController.text.trim(),
         latitude: _latitude,
         longitude: _longitude,
@@ -221,6 +225,7 @@ class _ListingFormState extends ConsumerState<_ListingForm> {
           _category = null;
           _condition = null;
           _openTo = 'cash-only';
+          _allowOffers = true;
           _latitude = null;
           _longitude = null;
         });
@@ -350,6 +355,19 @@ class _ListingFormState extends ConsumerState<_ListingForm> {
               ],
               onChanged: (v) => setState(() => _openTo = v ?? 'cash-only'),
             ),
+            if (_openTo != 'swap-only') ...[
+              const SizedBox(height: 6),
+              SwitchListTile(
+                value: _allowOffers,
+                onChanged: (v) => setState(() => _allowOffers = v),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Accept offers', style: TextStyle(fontSize: 14.5)),
+                subtitle: const Text(
+                  'Buyers can propose a price and you can accept, decline or counter.',
+                  style: TextStyle(fontSize: 12, color: AppColors.inkMute),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             TextFormField(
               controller: _locationController,

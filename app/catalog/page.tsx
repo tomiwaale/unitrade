@@ -3,11 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getBlockedUserIds } from "@/lib/safety";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
-import { productHref } from "@/lib/product-slug";
+import { productHref, productSlug } from "@/lib/product-slug";
+import { JsonLd } from "@/components/seo/json-ld";
+import { absoluteUrl, breadcrumbLd, itemListLd, DEFAULT_OG_IMAGES, NOINDEX_FOLLOW } from "@/lib/seo";
 
 const CATEGORY_META: Record<string, { title: string; description: string; keywords: string[] }> = {
   textbooks: {
-    title: "Buy Second-Hand Textbooks at Nigerian Universities | KolejSwap",
+    title: "Buy Second-Hand Textbooks at Nigerian Universities",
     description:
       "Find cheap used textbooks, course materials and study guides from students at UNILAG, UI, OAU, LASU, FUTA, UNIBEN, UNIPORT, ABU, UNN and 50+ Nigerian universities. Save money — buy directly from fellow students.",
     keywords: [
@@ -19,7 +21,7 @@ const CATEGORY_META: Record<string, { title: string; description: string; keywor
     ],
   },
   electronics: {
-    title: "Buy Cheap Laptops, Phones & Electronics from Nigerian Students | KolejSwap",
+    title: "Buy Cheap Laptops, Phones & Electronics from Nigerian Students",
     description:
       "Student-priced laptops, smartphones, tablets, earphones and gadgets. Buy from verified students at UNILAG, OAU, UI, FUTA, ABU and 50+ Nigerian universities — safe escrow, affordable prices.",
     keywords: [
@@ -31,7 +33,7 @@ const CATEGORY_META: Record<string, { title: string; description: string; keywor
     ],
   },
   furniture: {
-    title: "Buy Cheap Hostel Furniture & Room Items at Nigerian Universities | KolejSwap",
+    title: "Buy Cheap Hostel Furniture & Room Items at Nigerian Universities",
     description:
       "Hostel beds, mattresses, shelves, fans, buckets, cooking pots and room essentials at student prices. Buy from graduating students across UNILAG, OAU, UI, ABU, FUTA and 50+ Nigerian campuses.",
     keywords: [
@@ -43,7 +45,7 @@ const CATEGORY_META: Record<string, { title: string; description: string; keywor
     ],
   },
   clothing: {
-    title: "Buy Affordable Campus Fashion & Clothing from Nigerian Students | KolejSwap",
+    title: "Buy Affordable Campus Fashion & Clothing from Nigerian Students",
     description:
       "Affordable student fashion, school wears, casual clothing and accessories from fellow Nigerian university students. Shop from UNILAG, OAU, UI, FUTA and 50+ campuses.",
     keywords: [
@@ -54,7 +56,7 @@ const CATEGORY_META: Record<string, { title: string; description: string; keywor
     ],
   },
   other: {
-    title: "Buy Miscellaneous Campus Items from Nigerian Students | KolejSwap",
+    title: "Buy Miscellaneous Campus Items from Nigerian Students",
     description:
       "Find everything else students sell on campus — musical instruments, sports gear, cooking utensils, stationery, accessories and more at Nigerian universities.",
     keywords: [
@@ -65,7 +67,7 @@ const CATEGORY_META: Record<string, { title: string; description: string; keywor
     ],
   },
   services: {
-    title: "Student Services — Tutoring, Tech Help & More at Nigerian Universities | KolejSwap",
+    title: "Student Services — Tutoring, Tech Help & More at Nigerian Universities",
     description:
       "Hire student tutors, tech helpers, photographers, graphic designers, and delivery riders on your campus. Browse services offered by verified Nigerian university students at UNILAG, OAU, UI, FUTA, ABU and more.",
     keywords: [
@@ -78,10 +80,33 @@ const CATEGORY_META: Record<string, { title: string; description: string; keywor
   },
 };
 
-const APP_URL =
-  process.env.APP_URL?.startsWith("http")
-    ? process.env.APP_URL
-    : "https://kolejswap.com";
+/** Params that produce a page worth indexing in its own right. */
+const INDEXABLE_PARAMS = ["type", "category", "university"] as const;
+
+/**
+ * Sort orders, price caps, condition chips and free-text search all return
+ * re-shuffled versions of the same listings. Indexing them would burn crawl
+ * budget on near-duplicates, so they are noindex,follow and point their
+ * canonical at the clean collection URL.
+ */
+const FACET_PARAMS = ["q", "sort", "max_price", "today", "open_to", "condition", "view"] as const;
+
+/** Shortened campus name — "University of Lagos (UNILAG)" reads better as "UNILAG". */
+function campusShortName(university: string): string {
+  const abbr = university.match(/\(([^)]+)\)/);
+  return abbr ? abbr[1] : university;
+}
+
+function canonicalCatalogPath(params: { [key: string]: string | string[] | undefined }): string {
+  const parts: string[] = [];
+  for (const key of INDEXABLE_PARAMS) {
+    const value = params[key];
+    if (typeof value === "string" && value) {
+      parts.push(`${key}=${encodeURIComponent(value)}`);
+    }
+  }
+  return `/catalog${parts.length ? `?${parts.join("&")}` : ""}`;
+}
 
 export async function generateMetadata({
   searchParams,
@@ -91,36 +116,49 @@ export async function generateMetadata({
   const params     = await searchParams;
   const cat        = params.category as string | undefined;
   const isServices = params.type === "services";
-  const key        = isServices ? "services" : (cat ?? "all");
+  const university = typeof params.university === "string" ? params.university : undefined;
+  const key        = isServices ? (cat && CATEGORY_META[cat] ? cat : "services") : (cat ?? "all");
   const meta       = CATEGORY_META[key];
 
-  if (meta) {
-    const canonical = isServices
-      ? `${APP_URL}/catalog?type=services`
-      : `${APP_URL}/catalog?category=${cat}`;
-    return {
-      title: meta.title,
-      description: meta.description,
-      keywords: meta.keywords,
-      alternates: { canonical },
-      openGraph: { title: meta.title, description: meta.description },
-    };
+  const canonical  = absoluteUrl(canonicalCatalogPath(params));
+  const isFaceted  = FACET_PARAMS.some((k) => {
+    const v = params[k];
+    return typeof v === "string" && v && !(k === "view" && v === "grid");
+  });
+
+  let title = meta?.title
+    ?? "Buy & Sell Campus Items at Nigerian Universities";
+  let description = meta?.description
+    ?? "Browse thousands of listings from verified Nigerian university students. Textbooks, electronics, hostel furniture, clothing, services and more — all with safe escrow protection.";
+  const keywords = meta?.keywords ?? [
+    "student marketplace Nigeria", "buy sell campus Nigeria",
+    "cheap items university Nigeria", "buy school items Nigeria",
+    "student items for sale Nigeria", "campus market Nigeria",
+  ];
+
+  // A campus-scoped page is genuinely distinct content, so it gets its own
+  // title rather than inheriting the generic category one.
+  if (university) {
+    const short = campusShortName(university);
+    const what  = isServices
+      ? "Student Services"
+      : (cat ? (CAT_LABELS[cat] ?? "Campus Items") : "Campus Items");
+    title = `${what} at ${short} — Buy & Sell on Campus`;
+    description = `Browse ${what.toLowerCase()} listed by verified students at ${university}. Buy, sell and swap on campus with escrow-protected payments on KolejSwap.`;
   }
 
   return {
-    title: "Buy & Sell Campus Items at Nigerian Universities | KolejSwap",
-    description:
-      "Browse thousands of listings from verified Nigerian university students. Textbooks, electronics, hostel furniture, clothing, services and more — all with safe escrow protection.",
-    keywords: [
-      "student marketplace Nigeria", "buy sell campus Nigeria",
-      "cheap items university Nigeria", "buy school items Nigeria",
-      "student items for sale Nigeria", "campus market Nigeria",
-    ],
-    alternates: { canonical: `${APP_URL}/catalog` },
+    title,
+    description,
+    keywords,
+    alternates: { canonical },
+    ...(isFaceted ? { robots: NOINDEX_FOLLOW } : {}),
     openGraph: {
-      title: "Campus Marketplace Nigeria — KolejSwap",
-      description:
-        "Buy cheap student items at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ Nigerian campuses. Safe escrow payments.",
+      title,
+      description,
+      url: canonical,
+      type: "website",
+      images: DEFAULT_OG_IMAGES,
     },
   };
 }
@@ -346,10 +384,72 @@ export default async function CatalogPage({
     "swap-only":    "Swap only",
   };
 
+  // ─── SEO: page heading + collection structured data ───
+  const campusLabel = universityFilter
+    ? (universityFilter.match(/\(([^)]+)\)/)?.[1] ?? universityFilter)
+    : null;
+  const catLabel = categoryFilter ? (CAT_LABELS[categoryFilter] ?? categoryFilter) : null;
+
+  const heading = (() => {
+    if (isServices) {
+      const what = catLabel ? `${catLabel} services` : "Campus services";
+      return campusLabel ? `${what} at ${campusLabel}` : `${what} from Nigerian university students`;
+    }
+    const what = catLabel ? catLabel : "Campus items";
+    return campusLabel
+      ? `${what} for sale at ${campusLabel}`
+      : `${what} for sale at Nigerian universities`;
+  })();
+
+  const headingBlurb = isServices
+    ? "Hire verified students on your campus — tutoring, tech help, design, photography, delivery and more. Pay through escrow, release when the job is done."
+    : "Second-hand items listed directly by NIN-verified students across 50+ Nigerian campuses. No trader margin, and payment is held in escrow until you confirm delivery.";
+
+  const catalogTrail = [
+    { name: "Home", path: "/" },
+    { name: "Browse", path: "/catalog" },
+    ...(isServices ? [{ name: "Services", path: "/catalog?type=services" }] : []),
+    ...(catLabel
+      ? [{ name: catLabel, path: `/catalog?${isServices ? "type=services&" : ""}category=${categoryFilter}` }]
+      : []),
+  ];
+
+  const catalogLd = [
+    breadcrumbLd(catalogTrail),
+    itemListLd({
+      name: heading,
+      path: canonicalCatalogPath(search),
+      description: headingBlurb,
+      items: items.slice(0, 40).map((item) => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        images: item.images,
+        url: `/product/${productSlug(item.title, item.id)}`,
+      })),
+    }),
+  ];
+
   return (
     <div className="ut-app">
+      <JsonLd data={catalogLd} />
       <Navbar />
       <main className="ut-main">
+
+        {/* ── Page heading (the one crawlable H1 for this collection) ── */}
+        <div style={{ maxWidth: 780, marginBottom: 20 }}>
+          <h1 style={{
+            fontFamily: "var(--ut-font-display)",
+            fontSize: "clamp(22px, 2.8vw, 30px)",
+            fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.15,
+            color: "var(--ut-ink)", margin: "0 0 8px",
+          }}>
+            {heading}
+          </h1>
+          <p style={{ fontSize: 14.5, lineHeight: 1.65, color: "var(--ut-ink-mute)", margin: 0 }}>
+            {headingBlurb}
+          </p>
+        </div>
 
         {/* ── Type tabs + Post CTA ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>

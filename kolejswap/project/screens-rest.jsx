@@ -1,4 +1,4 @@
-// Unitrade — trade, checkout, sell, messages, profile
+// KolejSwap — trade, checkout, sell, messages, profile
 
 const TradeModal = ({ listing, data, onClose, onSubmit }) => {
   const myItems = [
@@ -21,7 +21,7 @@ const TradeModal = ({ listing, data, onClose, onSubmit }) => {
       </>}
     >
       <p style={{ margin: "0 0 12px", color: "var(--ut-ink-soft)", fontSize: 14, lineHeight: 1.5 }}>
-        Pick one of your items to offer in trade. The seller can accept, decline, or counter — and Unitrade holds any top-up in escrow until you both confirm.
+        Pick one of your items to offer in trade. The seller can accept, decline, or counter — and KolejSwap holds any top-up in escrow until you both confirm.
       </p>
 
       <span className="ut-field-label">You're offering</span>
@@ -144,7 +144,7 @@ const CheckoutModal = ({ listing, onClose, onConfirm }) => {
             {[
               { id: "card", label: "Debit card", sub: "Visa, Verve, Mastercard" },
               { id: "transfer", label: "Bank transfer", sub: "GTBank, Access, Opay…" },
-              { id: "wallet", label: "Unitrade wallet", sub: "Balance: ₦12,400" },
+              { id: "wallet", label: "KolejSwap wallet", sub: "Balance: ₦12,400" },
             ].map((m) => (
               <button key={m.id} className="ut-radio"
                 aria-pressed={method === m.id}

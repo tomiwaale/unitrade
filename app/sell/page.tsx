@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/ui/navbar";
 import SellForm from "./sell-form";
+import { normalizePriceStats, PRICE_STATS_COLUMNS } from "@/lib/price-stats";
 import Link from "next/link";
 import { GraduationCap, Landmark, ArrowRight } from "lucide-react";
 
@@ -27,6 +28,14 @@ export default async function SellPage() {
   const defaultLocation = profile?.university ?? "";
   const sellerName      = profile?.full_name ?? "";
 
+  // price_stats has no RLS (a materialized view cannot carry it) and is granted
+  // to nobody, so it is read with the service role. Tens of rows at most, so the
+  // whole table goes to the form and the per-keystroke lookup stays local.
+  const { data: statRows } = await admin
+    .from("price_stats")
+    .select(PRICE_STATS_COLUMNS);
+  const priceStats = normalizePriceStats(statRows);
+
   return (
     <div className="ut-app">
       <Navbar />
@@ -36,7 +45,7 @@ export default async function SellPage() {
         ) : !bankReady ? (
           <BankGate />
         ) : (
-          <SellForm defaultLocation={defaultLocation} sellerName={sellerName} />
+          <SellForm defaultLocation={defaultLocation} sellerName={sellerName} priceStats={priceStats} />
         )}
       </main>
     </div>

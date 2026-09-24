@@ -5,6 +5,7 @@ import { ShieldCheck, Lock, MessageSquare, ArrowUpRight, Package } from "lucide-
 import HeroSlider from "@/components/hero-slider";
 import { LandingNav } from "@/components/landing-nav";
 import { productHref } from "@/lib/product-slug";
+import { absoluteUrl, DEFAULT_OG_IMAGES } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "KolejSwap — Buy, Sell & Swap at Nigerian Universities",
@@ -21,11 +22,13 @@ export const metadata: Metadata = {
     "buy cheap laptop Nigeria student", "sell hostel furniture Nigeria",
     "Nigeria university marketplace", "campus swap Nigeria",
   ],
+  alternates: { canonical: absoluteUrl("/") },
   openGraph: {
     title: "KolejSwap — Nigeria's Student Marketplace",
     description:
       "Buy hostel furniture, textbooks, electronics and more from verified students at UNILAG, UI, OAU, LASU, FUTA, UNIPORT and 50+ campuses across Nigeria. Safe escrow payments.",
     type: "website",
+    images: DEFAULT_OG_IMAGES,
   },
 };
 
@@ -126,6 +129,39 @@ export default async function Home() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* ── Page H1 + intro ──
+            The hero carousel is admin-editable and can be image-only, so the
+            page's one stable, crawlable H1 lives here instead. It also carries
+            the internal links into the high-intent landing pages. */}
+        <section style={{ maxWidth: 860, margin: "36px 0 28px" }}>
+          <h1 style={{
+            fontFamily: "var(--ut-font-display)",
+            fontSize: "clamp(24px, 3.2vw, 34px)",
+            fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.15,
+            color: "var(--ut-ink)", margin: "0 0 14px",
+          }}>
+            Nigeria&apos;s student marketplace — buy, sell and swap on campus
+          </h1>
+          <p style={{ fontSize: 15.5, lineHeight: 1.7, color: "var(--ut-ink-soft)", margin: "0 0 10px" }}>
+            KolejSwap is where Nigerian university students trade directly with each other.
+            Second-hand textbooks, laptops, phones, hostel furniture and clothing, listed by
+            NIN-verified students at UNILAG, UI, OAU, ABU, FUTA, UNIBEN, UNIPORT, UNN, LASU and
+            50+ other campuses. No trader margin, no listing fees, and every payment is held in
+            escrow until the buyer confirms they got the item.
+          </p>
+          <p style={{ fontSize: 15.5, lineHeight: 1.7, color: "var(--ut-ink-soft)", margin: 0 }}>
+            Looking for the lowest price? Start with{" "}
+            <Link href="/deals" style={{ color: "var(--ut-primary-ink)", fontWeight: 500 }}>
+              the cheapest listings on the platform
+            </Link>
+            . Need help with a course? Students also offer campus services here — browse{" "}
+            <Link href="/tutors" style={{ color: "var(--ut-primary-ink)", fontWeight: 500 }}>
+              private tutors at Nigerian universities
+            </Link>
+            , tech help, design and photography.
+          </p>
         </section>
 
         {/* ── Categories ── */}

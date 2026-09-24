@@ -9,7 +9,7 @@ import UnblockButton from "./unblock-button";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Blocked accounts · KolejSwap",
+  title: "Blocked accounts",
 };
 
 export default async function BlockedAccountsPage() {

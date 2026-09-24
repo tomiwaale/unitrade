@@ -1,4 +1,4 @@
-// Sample data for Unitrade prototype — UNILAG-flavored
+// Sample data for KolejSwap prototype — UNILAG-flavored
 window.UT_DATA = {
   university: { name: "University of Lagos", short: "UNILAG", city: "Akoka, Lagos" },
   currentUser: {

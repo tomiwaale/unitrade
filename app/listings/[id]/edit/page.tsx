@@ -18,7 +18,7 @@ export default async function EditListingPage({
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, title, description, price, images, status, seller_id, category, condition, open_to, location")
+    .select("id, title, description, price, images, status, seller_id, category, condition, open_to, location, allow_offers")
     .eq("id", id)
     .single();
 
@@ -64,6 +64,7 @@ export default async function EditListingPage({
                 category: product.category ?? "",
                 condition: product.condition ?? "",
                 openTo: product.open_to ?? "cash-only",
+                allowOffers: product.allow_offers !== false,
                 location: product.location ?? "",
               }}
             />

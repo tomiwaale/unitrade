@@ -1,4 +1,4 @@
-// Unitrade — screen components
+// KolejSwap — screen components
 
 const HomeScreen = ({ data, state, setState, openListing, toggleSave }) => {
   const cat = state.category;
@@ -149,7 +149,7 @@ const HomeScreen = ({ data, state, setState, openListing, toggleSave }) => {
       )}
 
       <div className="ut-ticker">
-        <span>Unitrade · <b>{data.university.short}</b></span>
+        <span>KolejSwap · <b>{data.university.short}</b></span>
         <span><b>1,284</b> live listings</span>
         <span><b>312</b> students online</span>
         <span>Avg. response time <b>9 min</b></span>

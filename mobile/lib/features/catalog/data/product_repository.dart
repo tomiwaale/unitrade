@@ -6,7 +6,7 @@ import 'product.dart';
 /// embedded profile would fail since most profile columns aren't public.
 const productSelect =
     'id, seller_id, title, description, price, images, status, category, '
-    'condition, open_to, location, listing_type, latitude, longitude, created_at, '
+    'condition, open_to, location, listing_type, allow_offers, latitude, longitude, created_at, '
     'seller:profiles(full_name, university)';
 
 class ProductRepository {

@@ -24,6 +24,11 @@ const productSchema = z.object({
   condition: z.enum(["new", "like-new", "good", "fair", "poor"]).optional(),
   open_to: z.enum(["cash-only", "cash-or-swap", "swap-only"]).default("cash-only"),
   location: z.string().min(2, "Location is required"),
+  // Sent as a string from a hidden field, since an unchecked checkbox posts
+  // nothing at all. Defaults on, matching the column default.
+  allow_offers: z
+    .preprocess((v) => (v === undefined || v === null || v === "" ? true : v !== "false"), z.boolean())
+    .default(true),
 });
 
 function parseImages(formData: FormData): string[] {
@@ -63,6 +68,7 @@ export async function createProduct(formData: FormData) {
     condition: formData.get("condition") || undefined,
     open_to: formData.get("open_to") || "cash-only",
     location: formData.get("location"),
+    allow_offers: formData.get("allow_offers"),
   };
 
   const result = productSchema.safeParse(input);
@@ -70,7 +76,7 @@ export async function createProduct(formData: FormData) {
     return { error: result.error.issues[0].message };
   }
 
-  const { title, description, price, imageUrls, category, condition, open_to, location } = result.data;
+  const { title, description, price, imageUrls, category, condition, open_to, location, allow_offers } = result.data;
   const listing_type = category === "services" ? "service" : "item";
 
   const { error } = await supabase.from("products").insert({
@@ -84,6 +90,9 @@ export async function createProduct(formData: FormData) {
     open_to,
     location,
     listing_type,
+    // A swap-only listing has no cash price to negotiate, so it never takes
+    // offers whatever the form said.
+    allow_offers: open_to === "swap-only" ? false : allow_offers,
   });
 
   if (error) {
@@ -109,12 +118,13 @@ export async function updateProduct(productId: string, formData: FormData) {
     condition: formData.get("condition") || undefined,
     open_to: formData.get("open_to") || "cash-only",
     location: formData.get("location"),
+    allow_offers: formData.get("allow_offers"),
   };
 
   const result = productSchema.safeParse(input);
   if (!result.success) return { error: result.error.issues[0].message };
 
-  const { title, description, price, imageUrls, category, condition, open_to, location } = result.data;
+  const { title, description, price, imageUrls, category, condition, open_to, location, allow_offers } = result.data;
   const listing_type = category === "services" ? "service" : "item";
 
   const { error } = await supabase
@@ -129,6 +139,7 @@ export async function updateProduct(productId: string, formData: FormData) {
       open_to,
       location,
       listing_type,
+      allow_offers: open_to === "swap-only" ? false : allow_offers,
       updated_at: new Date().toISOString(),
     })
     .eq("id", productId)

@@ -48,8 +48,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "DB query failed" }, { status: 500 });
   }
 
+  // Rebuild the price bands the sell form reads. Cheap, and it rides the daily
+  // cron the deploy already has rather than asking for a second schedule.
+  const { data: priceStatRows, error: priceStatsError } = await supabase
+    .rpc("refresh_price_stats");
+
+  if (priceStatsError) {
+    console.error("[auto-release] price stats refresh error:", priceStatsError);
+  }
+
   const results = {
     expiredReservations: expiredReservations ?? 0,
+    priceStatRows: priceStatRows ?? 0,
     released: 0,
     failed: 0,
     skipped: 0,

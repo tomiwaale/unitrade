@@ -1,4 +1,4 @@
-// Unitrade — shared UI primitives
+// KolejSwap — shared UI primitives
 const { useState, useEffect, useMemo, useRef } = React;
 
 const NGN = (n) => {

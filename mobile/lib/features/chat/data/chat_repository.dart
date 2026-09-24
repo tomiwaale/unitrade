@@ -6,7 +6,7 @@ import '../../../core/supabase/supabase_client.dart';
 import 'models.dart';
 
 const _conversationSelect = 'id, product_id, buyer_id, seller_id, created_at, '
-    'product:products(title, images, price, status), '
+    'product:products(title, images, price, status, allow_offers, listing_type), '
     'buyer:profiles!conversations_buyer_id_fkey(full_name), '
     'seller:profiles!conversations_seller_id_fkey(full_name)';
 
@@ -153,6 +153,10 @@ class ChatRepository {
       productImage: images != null && images.isNotEmpty ? images.first : null,
       productPrice: (product?['price'] as num?)?.toDouble(),
       productStatus: product?['status'] as String?,
+      // Defaults to false rather than true: a build talking to a database
+      // without 033_price_offers.sql applied gets no column back, and hiding
+      // the affordance is better than offering one every call would refuse.
+      allowOffers: product?['allow_offers'] == true && product?['listing_type'] != 'service',
       otherUserId: (isBuyer ? row['seller_id'] : row['buyer_id']) as String,
       otherUserName: (other?['full_name'] as String?) ?? 'Student',
       isBuyer: isBuyer,

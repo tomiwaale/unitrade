@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
-  let body: { productId?: string };
+  let body: { productId?: string; offerId?: string | null };
   try {
     body = await request.json();
   } catch {
@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createUserScopedClient(auth.token);
-  const result = await initCheckout(supabase, body.productId, auth.user.email!);
+  // offerId is optional: an older build that does not send it still gets the
+  // negotiated price, because the RPC looks the offer up server-side.
+  const result = await initCheckout(supabase, body.productId, auth.user.email!, body.offerId ?? null);
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });

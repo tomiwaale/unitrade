@@ -7,7 +7,7 @@ import { AlertTriangle, ShieldAlert } from "lucide-react";
 import DeleteAccountForm from "./delete-account-form";
 
 export const metadata = {
-  title: "Delete Account · KolejSwap",
+  title: "Delete Account",
 };
 
 export default async function DeleteAccountPage() {

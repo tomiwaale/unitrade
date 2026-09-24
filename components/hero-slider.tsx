@@ -93,9 +93,12 @@ export default function HeroSlider({ slides, activeCount, interval = 10 }: Props
         <>
           <div style={{ position: "relative", zIndex: 1 }}>
             <span className="ut-hero-eyebrow">Live · Campus Marketplace</span>
-            <h1 className="ut-hero-title">
+            {/* Rotating, admin-editable headline — deliberately not the page
+                <h1>. The stable H1 lives on the page itself so it does not
+                change with the carousel or vanish on image-only slides. */}
+            <p className="ut-hero-title">
               {renderTitle(slide.title, slide.highlight)}
-            </h1>
+            </p>
             {slide.subtitle && (
               <p style={{ margin: "10px 0 0", fontSize: 14, opacity: 0.85, maxWidth: "38ch", lineHeight: 1.5 }}>
                 {slide.subtitle}

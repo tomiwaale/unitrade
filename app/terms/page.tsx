@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { LogoMark } from "@/components/ui/logo-mark";
+import { absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Terms of Use · KolejSwap",
+  title: "Terms of Use",
   description: "The rules and agreements that govern your use of KolejSwap.",
+  alternates: { canonical: absoluteUrl("/terms") },
 };
 
 const EFFECTIVE_DATE = "22 September 2026";

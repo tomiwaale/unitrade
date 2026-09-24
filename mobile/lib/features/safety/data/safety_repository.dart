@@ -115,13 +115,13 @@ String? describeMessageError(Object error) {
 
   if (message.contains('MESSAGE_BLOCKED_')) {
     if (message.contains('SEXUAL_CONTENT')) {
-      return "This message looks like it contains sexual content, which isn't allowed on UniTrade.";
+      return "This message looks like it contains sexual content, which isn't allowed on KolejSwap.";
     }
     if (message.contains('HATE_SPEECH')) {
-      return "This message contains language that isn't allowed on UniTrade.";
+      return "This message contains language that isn't allowed on KolejSwap.";
     }
     if (message.contains('VIOLENCE')) {
-      return "This message reads as a threat, which isn't allowed on UniTrade.";
+      return "This message reads as a threat, which isn't allowed on KolejSwap.";
     }
     return "This message breaks our community rules and wasn't sent.";
   }

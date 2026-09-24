@@ -4,6 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import SupportButton from "@/components/ui/support-button";
+import { JsonLd } from "@/components/seo/json-ld";
+import { APP_URL, absoluteUrl } from "@/lib/seo";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -16,11 +18,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   display: "swap",
 });
-
-const APP_URL =
-  process.env.APP_URL?.startsWith("http")
-    ? process.env.APP_URL
-    : "https://kolejswap.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -192,7 +189,37 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: { card: "summary_large_image" },
-  alternates: { canonical: APP_URL },
+  // No `alternates.canonical` here on purpose: child segments inherit it, and
+  // a root canonical would mark every page in the site as a duplicate of the
+  // home page. Each page declares its own.
+  applicationName: "KolejSwap",
+  category: "shopping",
+  // Google only shows a favicon next to a result when it can crawl a square
+  // icon whose size is a multiple of 48px and that is linked from the page
+  // head. favicon.ico ships 16/32/48; the PNGs cover the larger surfaces.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      // Without these, Google may show only a text-snippet result with no
+      // thumbnail for listing pages.
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export const viewport: Viewport = {
@@ -223,6 +250,13 @@ const organizationJsonLd = {
   url: APP_URL,
   description:
     "KolejSwap is Nigeria's #1 student marketplace — a peer-to-peer platform where university students buy, sell, and swap textbooks, electronics, hostel furniture, clothing, and services on campus.",
+  logo: {
+    "@type": "ImageObject",
+    url: absoluteUrl("/icon-512.png"),
+    width: 512,
+    height: 512,
+  },
+  image: absoluteUrl("/icon-512.png"),
   areaServed: { "@type": "Country", name: "Nigeria" },
   knowsAbout: [
     "student marketplace",
@@ -239,14 +273,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={cn(geistSans.variable, geistMono.variable)}>
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
+        <JsonLd data={[websiteJsonLd, organizationJsonLd]} />
       </head>
       <body className="min-h-screen antialiased flex flex-col" suppressHydrationWarning>
         {children}

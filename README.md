@@ -2,7 +2,7 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# unitrade
+# KolejSwap
 
 This contains everything you need to run your app locally.
 
@@ -22,5 +22,7 @@ View your app in AI Studio: https://ai.studio/apps/8fbb3d9e-e3ba-4983-9fcc-1ff72
 5. Configure a daily cron request to:
    `GET https://your-domain.com/api/cron/auto-release`
    with `Authorization: Bearer <CRON_SECRET>`.
+   The same run rebuilds the `price_stats` bands behind the sell-form price
+   nudge, so no second schedule is needed.
 6. Run the app:
    `npm run dev`

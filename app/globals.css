@@ -835,6 +835,70 @@
 }
 .ut-send-btn:hover { background: var(--ut-primary-ink); }
 
+/* ── Price offers in the thread ──────────────────────────────────────────
+   An offer is a card rather than a text bubble: the amount is the point, and
+   it needs room for the accept / counter buttons. Sits inside
+   .ut-msg-bubble-row like a bubble does, so alignment and the report
+   affordance keep working. */
+.ut-offer-card {
+  max-width: 100%; min-width: 210px;
+  padding: 12px 14px 13px; border-radius: 16px;
+  background: var(--ut-bg-card); border: 1.5px solid var(--ut-line);
+  display: flex; flex-direction: column; gap: 2px;
+}
+/* The live one is the only card with anything to do, so it is the only one
+   that draws attention. */
+.ut-offer-card.live { border-color: var(--ut-primary); background: var(--ut-primary-tint); }
+.ut-offer-card.settled { opacity: 0.82; }
+.ut-offer-card.dead { border-style: dashed; opacity: 0.7; }
+.ut-offer-kicker {
+  font-family: var(--ut-font-mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--ut-ink-mute);
+  display: flex; align-items: center; gap: 5px;
+}
+.ut-offer-amount {
+  font-family: var(--ut-font-mono); font-size: 21px; font-weight: 600;
+  color: var(--ut-ink); letter-spacing: -0.01em; line-height: 1.25;
+}
+.ut-offer-card.dead .ut-offer-amount { text-decoration: line-through; color: var(--ut-ink-mute); }
+.ut-offer-was {
+  font-family: var(--ut-font-mono); font-size: 11.5px; color: var(--ut-ink-mute);
+}
+.ut-offer-note {
+  margin: 5px 0 0; font-size: 13px; line-height: 1.4; color: var(--ut-ink-soft);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.ut-offer-meta { margin-top: 6px; font-size: 11.5px; color: var(--ut-ink-mute); }
+.ut-offer-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ut-offer-btn {
+  flex: 1 1 auto; min-width: 84px;
+  padding: 8px 12px; border-radius: 9px; border: 1.5px solid var(--ut-line);
+  background: var(--ut-bg-card); color: var(--ut-ink);
+  font-size: 12.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; gap: 5px;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.ut-offer-btn:hover:not(:disabled) { background: var(--ut-bg-sunken); }
+.ut-offer-btn.accept {
+  background: var(--ut-primary); border-color: var(--ut-primary); color: white;
+}
+.ut-offer-btn.accept:hover:not(:disabled) { background: var(--ut-primary-ink); border-color: var(--ut-primary-ink); }
+.ut-offer-btn.danger { color: #9B1C1C; }
+.ut-offer-btn.danger:hover:not(:disabled) { background: #FDEAEA; border-color: #F5C2C2; }
+.ut-offer-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* The agreed-price banner above the composer: the thread is where a buyer
+   lands from the "offer accepted" notification, so the pay action has to be
+   reachable without going back to the listing. */
+.ut-offer-deal {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 11px 14px; border-top: 1px solid var(--ut-line);
+  background: var(--ut-primary-tint);
+}
+.ut-offer-deal p { margin: 0; font-size: 13px; color: var(--ut-primary-ink); flex: 1; min-width: 150px; }
+.ut-offer-deal b { font-family: var(--ut-font-mono); }
+
 /* ═══════════════════════════════════════════
    Profile
 ═══════════════════════════════════════════ */

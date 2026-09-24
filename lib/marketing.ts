@@ -226,6 +226,7 @@ export async function startCampaign(campaignId: string): Promise<
           user_id: r.user_id,
           email: r.email,
           full_name: r.full_name,
+          university: r.university,
           status: "pending",
         })),
         { onConflict: "campaign_id,email", ignoreDuplicates: true }
@@ -287,7 +288,9 @@ export async function sendCampaignBatch(campaignId: string): Promise<{
     return { sent: 0, failed: 0, done: false };
   }
 
-  const batch = (claimed ?? []) as { id: string; email: string; full_name: string | null }[];
+  const batch = (claimed ?? []) as {
+    id: string; email: string; full_name: string | null; university: string | null;
+  }[];
 
   if (batch.length === 0) {
     // Nothing claimable. If rows are still in flight elsewhere, leave the
@@ -310,7 +313,7 @@ export async function sendCampaignBatch(campaignId: string): Promise<{
       renderCampaignEmail(campaign, {
         email: r.email,
         full_name: r.full_name,
-        university: null,
+        university: r.university,
       })
     )
   );

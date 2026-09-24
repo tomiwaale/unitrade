@@ -34,6 +34,34 @@ export function reportReasonLabel(reason: string): string {
 
 // ── Blocking ─────────────────────────────────────────────────────────────────
 
+// supabase-js hands back the parsed PostgREST response body, not an Error, so
+// there is no guarantee any particular field is present — and when the body is
+// empty the whole thing logs as a bare `{}`, which says nothing about what
+// failed. It also drops the HTTP status, which is the field that actually
+// separates "table isn't in the schema cache" (404) from "RLS or grant refused
+// you" (401/403) from "the query blew up" (500). So: name the fields by hand,
+// and always log the status alongside.
+function describeError(error: unknown, status?: number): string {
+  const prefix = status ? `HTTP ${status}` : "no status";
+  if (!error || typeof error !== "object") {
+    return `${prefix} — ${String(error ?? "unknown error")}`;
+  }
+
+  const e = error as { message?: string; code?: string; details?: string; hint?: string };
+  const parts = [
+    e.code && `code=${e.code}`,
+    e.message && `message=${e.message}`,
+    e.details && `details=${e.details}`,
+    e.hint && `hint=${e.hint}`,
+  ].filter(Boolean);
+
+  // An empty body usually means the request never reached PostgREST — an
+  // expired JWT rejected at the gateway, or the project being unreachable.
+  return parts.length
+    ? `${prefix} — ${parts.join(" ")}`
+    : `${prefix} — empty error body; the request likely failed before PostgREST (bad/expired session, wrong project URL, or network)`;
+}
+
 export async function blockUser(
   supabase: SupabaseClient,
   userId: string,
@@ -41,7 +69,7 @@ export async function blockUser(
 ): Promise<SafetyResult> {
   if (userId === blockedId) return { error: "You cannot block yourself." };
 
-  const { error } = await supabase
+  const { error, status } = await supabase
     .from("blocked_users")
     .insert({ blocker_id: userId, blocked_id: blockedId });
 
@@ -49,7 +77,7 @@ export async function blockUser(
   if (error?.code === "23505") return { success: true };
 
   if (error) {
-    console.error("[safety] block error:", error);
+    console.error("[safety] blockUser failed:", describeError(error, status));
     return { error: "Could not block this user. Please try again." };
   }
 
@@ -61,14 +89,14 @@ export async function unblockUser(
   userId: string,
   blockedId: string,
 ): Promise<SafetyResult> {
-  const { error } = await supabase
+  const { error, status } = await supabase
     .from("blocked_users")
     .delete()
     .eq("blocker_id", userId)
     .eq("blocked_id", blockedId);
 
   if (error) {
-    console.error("[safety] unblock error:", error);
+    console.error("[safety] unblockUser failed:", describeError(error, status));
     return { error: "Could not unblock this user. Please try again." };
   }
 
@@ -86,14 +114,14 @@ export async function listBlockedUsers(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<BlockedUser[]> {
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from("blocked_users")
     .select("id, blocked_id, created_at, blocked:profiles!blocked_users_blocked_id_fkey(full_name)")
     .eq("blocker_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[safety] listBlockedUsers error:", error);
+    console.error("[safety] listBlockedUsers failed:", describeError(error, status));
     return [];
   }
 
@@ -114,14 +142,14 @@ export async function getBlockedUserIds(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<string[]> {
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from("blocked_users")
     .select("blocked_id")
     .eq("blocker_id", userId);
 
   if (error) {
     // A catalog that fails open is better than a catalog that fails to load.
-    console.error("[safety] getBlockedUserIds error:", error);
+    console.error("[safety] getBlockedUserIds failed:", describeError(error, status));
     return [];
   }
 
@@ -155,7 +183,7 @@ export async function reportContent(
   if (error) {
     const mapped = describeReportError(error.message);
     if (mapped) return { error: mapped };
-    console.error("[safety] report error:", error);
+    console.error("[safety] reportContent failed:", describeError(error));
     return { error: "Could not submit the report. Please try again." };
   }
 

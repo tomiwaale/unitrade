@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseSegment } from "@/lib/marketing";
+import { starterTemplateMeta } from "@/lib/email-campaign-templates";
 import MarketingDashboard from "./marketing-dashboard";
 
 export const metadata = { title: "Email Marketing · Admin" };
@@ -39,6 +40,7 @@ export default async function AdminMarketingPage() {
       <MarketingDashboard
         campaigns={rows}
         templates={templates ?? []}
+        starters={starterTemplateMeta()}
         optedOutCount={optedOut ?? 0}
       />
     </div>

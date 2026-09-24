@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/require-admin";
+import { findStarterTemplate } from "@/lib/email-campaign-templates";
 import { sendUserEmail } from "@/lib/email";
 import {
   DEFAULT_SEGMENT,
@@ -344,4 +345,55 @@ export async function campaignFromTemplate(templateId: string) {
 
   revalidatePath("/admin/marketing");
   redirect(`/admin/marketing/${data.id}`);
+}
+
+// Creates a draft campaign from one of the built-in starters in
+// lib/email-campaign-templates.ts. Unlike campaignFromTemplate these aren't DB
+// rows, so there's nothing to look up — and the starter also carries the
+// audience it was written for, which pre-fills the segment builder.
+export async function campaignFromStarter(slug: string) {
+  const admin = await requireAdmin();
+  if (!admin) return { error: "Unauthorized" };
+
+  const starter = findStarterTemplate(slug);
+  if (!starter) return { error: "Template not found" };
+
+  const client = createAdminClient();
+  const { data, error } = await client
+    .from("email_campaigns")
+    .insert({
+      name: starter.name,
+      subject: starter.subject,
+      preheader: starter.preheader,
+      body_md: starter.body_md,
+      segment: parseSegment(starter.segment),
+      created_by: admin.id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    console.error("[marketing] campaign from starter failed:", error);
+    return { error: "Could not create campaign" };
+  }
+
+  revalidatePath("/admin/marketing");
+  redirect(`/admin/marketing/${data.id}`);
+}
+
+// Copies a starter into the saved-templates table so it can be edited and
+// reused as a house template, rather than re-forked from the built-in copy.
+export async function saveStarterAsTemplate(slug: string) {
+  const admin = await requireAdmin();
+  if (!admin) return { error: "Unauthorized" };
+
+  const starter = findStarterTemplate(slug);
+  if (!starter) return { error: "Template not found" };
+
+  return saveTemplate({
+    name: starter.name,
+    subject: starter.subject,
+    preheader: starter.preheader,
+    body_md: starter.body_md,
+  });
 }

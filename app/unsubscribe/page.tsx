@@ -4,7 +4,7 @@ import UnsubscribeForm from "./unsubscribe-form";
 import { LogoMark } from "@/components/ui/logo-mark";
 
 export const metadata = {
-  title: "Unsubscribe · KolejSwap",
+  title: "Unsubscribe",
   robots: { index: false, follow: false },
 };
 

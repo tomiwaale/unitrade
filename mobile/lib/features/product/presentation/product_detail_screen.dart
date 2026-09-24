@@ -5,11 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/naira.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../catalog/data/product.dart';
 import '../../chat/application/chat_providers.dart';
 import '../../chat/data/chat_repository.dart';
 import '../../checkout/data/checkout_repository.dart';
+import '../../offers/application/offer_providers.dart';
+import '../../offers/data/offer_models.dart';
+import '../../offers/presentation/offer_sheet.dart';
 import '../../reviews/presentation/seller_rating_badge.dart';
 import '../../safety/data/models.dart' as safety;
 import '../../safety/presentation/report_sheet.dart';
@@ -32,11 +36,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   bool _messaging = false;
   bool _buying = false;
 
-  Future<void> _buyNow(Product product) async {
+  /// [agreedOffer] is the buyer's negotiated price, when they have one. Passed
+  /// as a hint only — reserve_product_for_checkout resolves the offer itself, so
+  /// the amount charged never comes from here.
+  Future<void> _buyNow(Product product, {PriceOffer? agreedOffer}) async {
     if (_buying) return;
     setState(() => _buying = true);
     try {
-      final checkoutUrl = await ref.read(_checkoutRepositoryProvider).initCheckout(product.id);
+      final checkoutUrl = await ref
+          .read(_checkoutRepositoryProvider)
+          .initCheckout(product.id, offerId: agreedOffer?.id);
       if (!mounted) return;
       final completed = await context.push<bool>('/checkout', extra: checkoutUrl);
       if (completed == true && mounted) context.push('/orders');
@@ -52,6 +61,24 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _buying = false);
+    }
+  }
+
+  Future<void> _openOfferSheet(Product product) async {
+    final placed = await showOfferSheet(
+      context,
+      productId: product.id,
+      productTitle: product.title,
+      listPrice: product.price,
+    );
+
+    if (placed != null && mounted) {
+      ref.invalidate(productOffersProvider(product.id));
+      // The negotiation lives in the thread, so that is where the buyer goes to
+      // see the reply.
+      if (placed.conversationId != null) {
+        context.push('/messages/${placed.conversationId}');
+      }
     }
   }
 
@@ -102,6 +129,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         data: (product) {
           final isOwnListing = product.sellerId == myId;
           final wishlistedAsync = ref.watch(isWishlistedProvider(product.id));
+
+          // This buyer's negotiation state on the listing: a price already
+          // agreed (which the Buy button offers to charge) and any offer still
+          // awaiting a reply (so the screen does not invite a second one).
+          // Skipped for the seller's own listing and when signed out — neither
+          // can hold an offer.
+          final myOffers = (isOwnListing || myId == null)
+              ? const <PriceOffer>[]
+              : (ref.watch(productOffersProvider(product.id)).value ?? const <PriceOffer>[]);
+          final agreedOffer = myOffers.redeemable;
+          final pendingOffer = myOffers.awaitingReply;
 
           return CustomScrollView(
             slivers: [
@@ -167,10 +205,44 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       const SizedBox(height: 24),
                       if (!isOwnListing && product.status == 'active') ...[
                         ElevatedButton.icon(
-                          onPressed: _buying ? null : () => _buyNow(product),
+                          onPressed: _buying ? null : () => _buyNow(product, agreedOffer: agreedOffer),
                           icon: const Icon(Icons.shopping_bag_outlined),
-                          label: Text(_buying ? 'Starting checkout…' : 'Buy now — escrow protected'),
+                          label: Text(
+                            _buying
+                                ? 'Starting checkout…'
+                                : agreedOffer != null
+                                    // Naming the agreed amount is the whole
+                                    // reassurance: they are about to be charged
+                                    // less than the price on the page.
+                                    ? 'Buy at ${formatNaira(agreedOffer.amount)} — escrow protected'
+                                    : 'Buy now — escrow protected',
+                          ),
                         ),
+                        const SizedBox(height: 10),
+                      ],
+                      // Hidden once a price is agreed: the Buy button already
+                      // names it, and re-opening the negotiation would only
+                      // replace the deal the buyer just won.
+                      if (!isOwnListing &&
+                          product.status == 'active' &&
+                          product.allowOffers &&
+                          product.listingType != 'service' &&
+                          product.openTo != 'swap-only' &&
+                          agreedOffer == null) ...[
+                        if (pendingOffer != null)
+                          OutlinedButton.icon(
+                            onPressed: pendingOffer.conversationId == null
+                                ? null
+                                : () => context.push('/messages/${pendingOffer.conversationId}'),
+                            icon: const Icon(Icons.sell_outlined),
+                            label: Text('Your offer: ${formatNaira(pendingOffer.amount)}'),
+                          )
+                        else
+                          OutlinedButton.icon(
+                            onPressed: () => _openOfferSheet(product),
+                            icon: const Icon(Icons.sell_outlined),
+                            label: const Text('Make an offer'),
+                          ),
                         const SizedBox(height: 10),
                       ],
                       if (!isOwnListing &&

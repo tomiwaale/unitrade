@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/location/location_providers.dart';
 import '../../safety/application/safety_providers.dart';
+import '../data/price_stat.dart';
+import '../data/price_stat_repository.dart';
 import '../data/product.dart';
 import '../data/product_repository.dart';
 import '../data/promo_slide.dart';
@@ -14,6 +16,17 @@ final productRepositoryProvider = Provider<ProductRepository>(
 final promoSlideRepositoryProvider = Provider<PromoSlideRepository>(
   (ref) => PromoSlideRepository(),
 );
+final priceStatRepositoryProvider = Provider<PriceStatRepository>(
+  (ref) => PriceStatRepository(),
+);
+
+/// The campus price bands behind the deal badges. One fetch shared by every
+/// card in the feed — the table is one row per (category, condition), so tens
+/// of rows rather than thousands, and it only changes when the cron refreshes
+/// the view (app/api/cron/auto-release/route.ts).
+final priceStatsProvider = FutureProvider<PriceStats>((ref) {
+  return ref.watch(priceStatRepositoryProvider).fetch();
+});
 
 final promoSlidesProvider = FutureProvider<List<PromoSlide>>((ref) {
   return ref.watch(promoSlideRepositoryProvider).fetchActiveSlides();

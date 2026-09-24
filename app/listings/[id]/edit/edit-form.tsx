@@ -41,6 +41,7 @@ interface Props {
     category: string;
     condition: string;
     openTo: string;
+    allowOffers: boolean;
     location: string;
   };
 }
@@ -50,6 +51,7 @@ export default function EditListingForm({ productId, defaults }: Props) {
   const [category, setCategory] = useState(defaults.category);
   const [condition, setCondition] = useState(defaults.condition);
   const [openTo, setOpenTo] = useState<OpenTo>((defaults.openTo as OpenTo) || "cash-only");
+  const [allowOffers, setAllowOffers] = useState(defaults.allowOffers);
   const gpsLoc = useLocation();
 
   async function action(formData: FormData) {
@@ -68,6 +70,7 @@ export default function EditListingForm({ productId, defaults }: Props) {
       <input type="hidden" name="category" value={category} />
       <input type="hidden" name="condition" value={condition} />
       <input type="hidden" name="open_to" value={openTo} />
+      <input type="hidden" name="allow_offers" value={allowOffers ? "true" : "false"} />
 
       <div>
         <label className="ut-field-label">Title</label>
@@ -155,6 +158,35 @@ export default function EditListingForm({ productId, defaults }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Turning this off stops new offers; any offer already agreed still
+          stands, since the buyer was told it would. */}
+      {openTo !== "swap-only" && (
+        <label
+          style={{
+            display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
+            padding: "11px 13px", borderRadius: 11,
+            border: `1.5px solid ${allowOffers ? "var(--ut-primary)" : "var(--ut-line)"}`,
+            background: allowOffers ? "var(--ut-primary-tint)" : "var(--ut-bg-card)",
+            transition: "border-color 0.15s, background 0.15s",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={allowOffers}
+            onChange={(e) => setAllowOffers(e.target.checked)}
+            style={{ marginTop: 2, accentColor: "var(--ut-primary)", width: 16, height: 16, flexShrink: 0 }}
+          />
+          <span>
+            <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ut-ink)" }}>
+              Accept offers
+            </span>
+            <span style={{ display: "block", marginTop: 2, fontSize: 12, color: "var(--ut-ink-mute)" }}>
+              Buyers can propose a price and you can accept, decline or counter.
+            </span>
+          </span>
+        </label>
+      )}
 
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>

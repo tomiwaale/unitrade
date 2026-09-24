@@ -15,6 +15,9 @@ function checkoutErrorMessage(message?: string) {
   if (message.includes("PRODUCT_CHECKOUT_RESERVED")) {
     return "Someone is already checking out this item. Please try again in a few minutes.";
   }
+  if (message.includes("OFFER_NOT_REDEEMABLE")) {
+    return "That agreed price has expired or was already used. Ask the seller for a fresh offer.";
+  }
   return "Unable to start checkout. Please try again.";
 }
 
@@ -25,10 +28,18 @@ function checkoutErrorMessage(message?: string) {
 // to the calling user (cookie session on web, Bearer token on mobile — see
 // lib/supabase/mobile.ts) since reserve_product_for_checkout relies on
 // auth.uid().
+//
+// `offerId` is the buyer's accepted price offer (033_price_offers.sql), and is
+// only ever a hint: the RPC re-checks that the offer belongs to this buyer and
+// is still live, and when it is omitted it looks the offer up itself. So the
+// charged amount comes back from the database rather than from here — a buyer
+// cannot name their own price by editing a request, and a buyer on a mobile
+// build too old to pass an offer id is still charged what was agreed.
 export async function initCheckout(
   supabase: SupabaseClient,
   productId: string,
   userEmail: string,
+  offerId?: string | null,
 ): Promise<InitCheckoutResult> {
   const reference = `ORD-${Date.now()}-${productId.slice(0, 5)}`;
 
@@ -36,6 +47,7 @@ export async function initCheckout(
     .rpc("reserve_product_for_checkout", {
       p_product_id: productId,
       p_reference: reference,
+      p_offer_id: offerId ?? null,
     })
     .single();
 

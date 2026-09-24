@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { LogoMark } from "@/components/ui/logo-mark";
+import { absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · KolejSwap",
+  title: "Privacy Policy",
   description: "How KolejSwap collects, uses, and protects your personal information.",
+  alternates: { canonical: absoluteUrl("/privacy") },
 };
 
 const EFFECTIVE_DATE = "31 August 2026";

@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../wishlist/application/wishlist_providers.dart';
+import '../application/catalog_providers.dart';
 import '../data/product.dart';
+import 'deal_badge.dart';
 
 class ProductCard extends ConsumerWidget {
   const ProductCard({super.key, required this.product, required this.onTap});
@@ -17,6 +19,16 @@ class ProductCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isOwnListing = product.sellerId == supabase.auth.currentUser?.id;
 
+    // Read as a plain nullable value rather than through .when(): the bands
+    // load a beat after the feed does and the card must not wait on them. A
+    // badge that fades in late is fine; a spinner where a photo should be is
+    // not.
+    final tier = ref.watch(priceStatsProvider).value?.tierFor(
+          category: product.category,
+          condition: product.condition,
+          price: product.price,
+        );
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -25,15 +37,26 @@ class ProductCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: SizedBox(
-                width: double.infinity,
-                child: product.coverImage != null
-                    ? CachedNetworkImage(
-                        imageUrl: product.coverImage!,
-                        fit: BoxFit.cover,
-                        errorWidget: (context, url, error) => const _ImagePlaceholder(),
-                      )
-                    : const _ImagePlaceholder(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: product.coverImage != null
+                        ? CachedNetworkImage(
+                            imageUrl: product.coverImage!,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => const _ImagePlaceholder(),
+                          )
+                        : const _ImagePlaceholder(),
+                  ),
+                  if (tier != null)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: DealBadgeChip(tier: tier, compact: true),
+                    ),
+                ],
               ),
             ),
             Padding(

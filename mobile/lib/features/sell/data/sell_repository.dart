@@ -36,6 +36,7 @@ class SellRepository {
     required String category,
     String? condition,
     required String openTo,
+    required bool allowOffers,
     required String location,
     double? latitude,
     double? longitude,
@@ -52,6 +53,9 @@ class SellRepository {
       'category': category,
       'condition': condition,
       'open_to': openTo,
+      // A swap-only listing has no cash price to negotiate, so it never takes
+      // offers whatever the form said.
+      'allow_offers': openTo == 'swap-only' ? false : allowOffers,
       'location': location,
       'listing_type': listingType,
       'latitude': ?latitude,
@@ -78,6 +82,7 @@ class SellRepository {
     required String category,
     String? condition,
     required String openTo,
+    required bool allowOffers,
     required String location,
     double? latitude,
     double? longitude,
@@ -93,6 +98,9 @@ class SellRepository {
       'category': category,
       'condition': condition,
       'open_to': openTo,
+      // A swap-only listing has no cash price to negotiate, so it never takes
+      // offers whatever the form said.
+      'allow_offers': openTo == 'swap-only' ? false : allowOffers,
       'location': location,
       'listing_type': listingType,
       'latitude': ?latitude,

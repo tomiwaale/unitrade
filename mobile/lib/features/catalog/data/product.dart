@@ -14,6 +14,7 @@ class Product {
     this.openTo,
     this.location,
     this.listingType,
+    this.allowOffers = false,
     this.latitude,
     this.longitude,
     this.sellerName,
@@ -33,6 +34,12 @@ class Product {
   final String? openTo;
   final String? location;
   final String? listingType;
+
+  /// Whether this listing takes price offers (033_price_offers.sql). Defaults
+  /// to false rather than to the column's own default of true: a build talking
+  /// to a database without that migration applied gets nothing back here, and
+  /// hiding the affordance beats offering one every call would refuse.
+  final bool allowOffers;
   final double? latitude;
   final double? longitude;
   final String? sellerName;
@@ -56,6 +63,7 @@ class Product {
       openTo: json['open_to'] as String?,
       location: json['location'] as String?,
       listingType: json['listing_type'] as String?,
+      allowOffers: json['allow_offers'] == true,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       sellerName: seller?['full_name'] as String?,

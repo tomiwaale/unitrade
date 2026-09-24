@@ -36,10 +36,10 @@ export default function PaymentSafetyDialog() {
             <AlertTriangle size={20} style={{ color: "var(--ut-yellow, #ca8a04)" }} />
           </div>
           <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 15.5, color: "var(--ut-ink)" }}>
-            Keep it on UniTrade
+            Keep it on KolejSwap
           </p>
           <p style={{ margin: "0 0 20px", fontSize: 13.5, color: "var(--ut-ink-soft)", lineHeight: 1.55 }}>
-            Always pay through UniTrade&apos;s escrow — never send money directly to a seller outside
+            Always pay through KolejSwap&apos;s escrow — never send money directly to a seller outside
             the app. If you transact off-platform, we can&apos;t protect your payment or step in if
             something goes wrong.
           </p>

@@ -10,6 +10,7 @@ import '../../../core/api/mobile_api_client.dart';
 import '../../../core/supabase/supabase_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/image_compression.dart';
+import '../../../core/utils/naira.dart';
 import '../../../core/utils/phone.dart';
 import '../../checkout/data/checkout_repository.dart';
 import '../../product/presentation/fullscreen_image_viewer.dart';
@@ -17,6 +18,11 @@ import '../../safety/data/models.dart' as safety;
 import '../../safety/data/safety_repository.dart';
 import '../../safety/presentation/report_sheet.dart';
 import '../../safety/presentation/safety_actions.dart';
+import '../../offers/application/offer_providers.dart';
+import '../../offers/data/offer_models.dart';
+import '../../offers/data/offer_repository.dart';
+import '../../offers/presentation/offer_bubble.dart';
+import '../../offers/presentation/offer_sheet.dart';
 import '../application/chat_providers.dart';
 import '../data/calling_repository.dart';
 import '../data/models.dart';
@@ -38,6 +44,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _scrollController = ScrollController();
   bool _sending = false;
   bool _buying = false;
+  bool _offerBusy = false;
+
+  /// Offer messages already accounted for, so a repaint does not refetch the
+  /// thread's offers over and over. See _syncOffersWith.
+  final _seenOfferMessageIds = <String>{};
+  bool _offerSyncPrimed = false;
 
   /// Last message count we scrolled for, so a rebuild that isn't a new
   /// message (a read receipt landing, say) doesn't yank the list.
@@ -64,9 +76,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.warning_amber_rounded, color: Color(0xFFCA8A04), size: 28),
-        title: const Text('Keep it on UniTrade'),
+        title: const Text('Keep it on KolejSwap'),
         content: const Text(
-          "Always pay through UniTrade's escrow — never send money directly to a seller "
+          "Always pay through KolejSwap's escrow — never send money directly to a seller "
           "outside the app. If you transact off-platform, we can't protect your payment "
           "or step in if something goes wrong.",
           style: TextStyle(fontSize: 13.5, height: 1.4),
@@ -112,6 +124,34 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           curve: Curves.easeOut,
         );
       }
+    });
+  }
+
+  /// Offer state lives in price_offers, not on the message, because one offer
+  /// spans several bubbles and its status changes after the fact. Every offer
+  /// event does post a message though, so a new offer message arriving on the
+  /// stream is the cue to refetch — which is what lets this screen get by with
+  /// the one subscription it already had.
+  void _syncOffersWith(List<ChatMessage> messages) {
+    final offerMessageIds =
+        messages.where((m) => m.offerId != null).map((m) => m.id).toSet();
+
+    // The provider fetches the thread's offers when first watched, so whatever
+    // is on screen at that point needs no extra round trip.
+    if (!_offerSyncPrimed) {
+      _offerSyncPrimed = true;
+      _seenOfferMessageIds.addAll(offerMessageIds);
+      return;
+    }
+
+    final fresh = offerMessageIds.difference(_seenOfferMessageIds);
+    if (fresh.isEmpty) return;
+    _seenOfferMessageIds.addAll(fresh);
+
+    // Invalidating during build would be re-entrant; the counterpart's accept
+    // or counter lands a frame later instead.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(conversationOffersProvider(widget.conversationId));
     });
   }
 
@@ -177,11 +217,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     );
   }
 
-  Future<void> _buyNow(ConversationSummary summary) async {
+  /// `agreedOffer` is the buyer's negotiated price, when they have one. Passed
+  /// as a hint only — reserve_product_for_checkout resolves the offer itself, so
+  /// the amount charged never comes from here.
+  Future<void> _buyNow(ConversationSummary summary, {PriceOffer? agreedOffer}) async {
     if (_buying || summary.productId == null) return;
     setState(() => _buying = true);
     try {
-      final checkoutUrl = await ref.read(_checkoutRepositoryProvider).initCheckout(summary.productId!);
+      final checkoutUrl = await ref
+          .read(_checkoutRepositoryProvider)
+          .initCheckout(summary.productId!, offerId: agreedOffer?.id);
       if (!mounted) return;
       final completed = await context.push<bool>('/checkout', extra: checkoutUrl);
       if (completed == true && mounted) context.push('/orders');
@@ -192,6 +237,71 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     } finally {
       if (mounted) setState(() => _buying = false);
     }
+  }
+
+  /// Opens the composer for a fresh offer, or for a counter when `counterTo` is
+  /// given. The offer list is invalidated on success so the new card appears
+  /// even if the realtime message has not landed yet.
+  Future<void> _openOfferSheet(ConversationSummary summary, {PriceOffer? counterTo}) async {
+    if (summary.productId == null) return;
+
+    final placed = await showOfferSheet(
+      context,
+      productId: summary.productId!,
+      productTitle: summary.productTitle ?? 'this listing',
+      listPrice: counterTo?.amount != null && summary.productPrice == null
+          ? counterTo!.amount
+          : (summary.productPrice ?? 0),
+      counterTo: counterTo,
+    );
+
+    if (placed != null && mounted) {
+      ref.invalidate(conversationOffersProvider(widget.conversationId));
+    }
+  }
+
+  Future<void> _respondToOffer(PriceOffer offer, String action) async {
+    if (_offerBusy) return;
+    setState(() => _offerBusy = true);
+    try {
+      await ref.read(offerRepositoryProvider).respond(offer.id, action);
+    } on OfferException catch (e) {
+      _showMessage(e.message);
+    } catch (_) {
+      _showMessage('Could not update that offer. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _offerBusy = false);
+        ref.invalidate(conversationOffersProvider(widget.conversationId));
+      }
+    }
+  }
+
+  Future<void> _confirmDecline(PriceOffer offer) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Decline this offer?'),
+        content: Text(
+          'They offered ${formatNaira(offer.amount)}. Countering keeps the '
+          'conversation going instead.',
+          style: const TextStyle(fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep it open'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.destructive),
+            child: const Text('Decline'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) await _respondToOffer(offer, 'decline');
   }
 
   Future<void> _call({required bool whatsapp, required String? otherUserId}) async {
@@ -232,6 +342,20 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     // buttons have nothing to work with.
     final summary = widget.summary ??
         (ref.watch(conversationSummaryProvider(widget.conversationId)).value);
+
+    // Offer rows are read separately from the messages stream: one offer spans
+    // several messages, and the card renders from the offer's live status rather
+    // than from whatever was true when the bubble was posted.
+    final offers = ref.watch(conversationOffersProvider(widget.conversationId)).value ?? const [];
+    final offersById = {for (final offer in offers) offer.id: offer};
+
+    // The buyer's agreed price, if one is standing. A buyer arriving from the
+    // "offer accepted" push lands here, so paying has to be reachable without
+    // going back to the listing.
+    // fetchForConversation returns both sides' offers, so this is still scoped
+    // to the signed-in buyer before asking for the redeemable one.
+    final agreedOffer =
+        offers.where((offer) => offer.buyerId == myId).toList().redeemable;
 
     return Scaffold(
       appBar: AppBar(
@@ -291,6 +415,20 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   ref.read(chatRepositoryProvider).markConversationRead(widget.conversationId).ignore();
                 }
 
+                // Every offer event posts a message, so the arrival of one whose
+                // offer we have not loaded is the cue to refetch — that makes
+                // the messages stream the only subscription this screen needs.
+                _syncOffersWith(messages);
+
+                // Only the newest proposal can still be acted on, so the id is
+                // resolved once rather than per bubble.
+                final latestProposalId = messages.reversed
+                    .where((m) =>
+                        m.offerId != null &&
+                        (m.offerEvent == OfferEvent.offered || m.offerEvent == OfferEvent.countered))
+                    .firstOrNull
+                    ?.offerId;
+
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
@@ -298,6 +436,29 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final previous = index > 0 ? messages[index - 1] : null;
+                    final offer = message.offerId != null ? offersById[message.offerId] : null;
+
+                    // Falls through to the text bubble until the offer row
+                    // loads; `content` already reads "Offered ₦18,000", which is
+                    // also what an older build shows.
+                    if (offer != null && message.offerEvent != null && !message.isRemoved) {
+                      return OfferBubble(
+                        offer: offer,
+                        event: message.offerEvent!,
+                        isMine: message.senderId == myId,
+                        currentUserId: myId ?? '',
+                        listPrice: summary?.productPrice ?? 0,
+                        isLatest: message.offerId == latestProposalId,
+                        busy: _offerBusy,
+                        onAccept: () => _respondToOffer(offer, 'accept'),
+                        onDecline: () => _confirmDecline(offer),
+                        onCounter: summary == null
+                            ? () {}
+                            : () => _openOfferSheet(summary, counterTo: offer),
+                        onWithdraw: () => _respondToOffer(offer, 'withdraw'),
+                      );
+                    }
+
                     return _MessageBubble(
                       message: message,
                       isMine: message.senderId == myId,
@@ -312,6 +473,36 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               },
             ),
           ),
+          // An agreed price is only worth anything if it gets paid, so it sits
+          // above the composer until it is spent or lapses.
+          if (agreedOffer != null && summary != null)
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+              decoration: const BoxDecoration(
+                color: AppColors.primaryTint,
+                border: Border(top: BorderSide(color: AppColors.line)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Agreed at ${formatNaira(agreedOffer.amount)} — pay through escrow to lock it in.',
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.primaryInk, height: 1.3),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton.icon(
+                    onPressed: _buying ? null : () => _buyNow(summary, agreedOffer: agreedOffer),
+                    icon: const Icon(Icons.lock_outline, size: 14),
+                    label: Text(_buying ? '…' : 'Pay ${formatNaira(agreedOffer.amount)}'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           SafeArea(
             top: false,
             child: Padding(
@@ -324,6 +515,15 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                     tooltip: 'Send a photo',
                     color: AppColors.inkSoft,
                   ),
+                  // Only the buyer opens a negotiation; the seller answers one
+                  // from the offer card itself.
+                  if (summary != null && summary.canOffer && agreedOffer == null)
+                    IconButton(
+                      onPressed: _sending ? null : () => _openOfferSheet(summary),
+                      icon: const Icon(Icons.sell_outlined),
+                      tooltip: 'Make an offer',
+                      color: AppColors.inkSoft,
+                    ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
